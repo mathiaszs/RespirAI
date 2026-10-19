@@ -107,3 +107,17 @@ O projeto configurado em `.firebaserc` é `tcc-mecatronica-b7885`.
 
 - Sketches ESP-NOW baseados nos exemplos de Lucas Saavedra Vaz (2024).
 - Dados de demonstração: St. Vincent's University Hospital / UCD Sleep Apnea Database, PhysioNet.
+
+## Testar o Firebase e o dashboard sem hardware
+
+`tools/simular-dispositivo.mjs` age como o gateway: grava leituras falsas (com pausas e dessaturações a cada 5 min)
+em `/leituras/<id>`, no formato do dashboard.
+
+```bash
+export FIREBASE_USUARIO='gateway@exemplo.com'   # usuário do Authentication (não commitar!)
+export FIREBASE_SENHA_USUARIO='...'
+node tools/simular-dispositivo.mjs --id respirai-01 --historico 360 --ao-vivo
+```
+
+Depois abra o dashboard, entre, digite o mesmo ID em "dispositivo" e veja a noite de hoje (aba Noite) e a aba Ao vivo.
+O usuário precisa ter permissão de escrita em `/leituras/<id>` nas regras do banco.
