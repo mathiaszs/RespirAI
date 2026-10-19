@@ -1,0 +1,9 @@
+.firebase/
+node_modules/
+.env
+*.local
+serviceAccount*.json
+*-adminsdk-*.json
+.claude/settings.local.json
+.DS_Store
+Thumbs.db
