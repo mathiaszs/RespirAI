@@ -15,12 +15,17 @@
       rejeição de batidas falsas), a 100 amostras por segundo.
     - SpO2: algoritmo da Maxim (spo2_algorithm.h), alimentado com a média de cada
       4 amostras (25 amostras por segundo, como ele espera).
-    - Envio por ESP-NOW a cada 1 segundo: data[0] = BPM, data[1] = SpO2
-      (0 quando não há leitura válida), data[2] = 1 com dedo no sensor, 0 sem dedo.
+    - Envio por ESP-NOW (broadcast) a cada 1 segundo, no formato PacoteLeitura
+      (PacoteLeitura.h): bpm e spo2 (0 = sem leitura válida), dedo (1/0), seq e resp.
+    - Canal Wi-Fi: o gateway fica no canal do roteador, que não é fixo. Enquanto não
+      recebe o ACK do gateway, o Master varre os canais 1..13; ao receber, fica no canal.
+      Se o ACK sumir por ACK_TIMEOUT_MS, volta a varrer.
 */
 
-#include "ESP32_NOW.h"
-#include "WiFi.h"
+#include <WiFi.h>
+#include <esp_now.h>
+#include <esp_wifi.h>
+#include "PacoteLeitura.h"
 
 #include <esp_mac.h>  // For the MAC2STR and MACSTR macros
 
@@ -74,50 +79,58 @@ int8_t validSPO2 = 0; //indicator to show if the SPO2 calculation is valid
 int32_t heartRate; //heart rate value (Maxim, não usado: o BPM vem do algoritmo próprio)
 int8_t validHeartRate; //indicator to show if the heart rate calculation is valid
 
-/* Definitions */
+/* ESP-NOW: envio em broadcast com busca do canal do gateway */
 
-#define ESPNOW_WIFI_CHANNEL 6
+const uint8_t BROADCAST[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+const uint8_t CANAL_MAX = 13;                 // canais 1..13 (Brasil)
+const unsigned long ACK_TIMEOUT_MS = 5000;    // sem ACK por este tempo: varre os canais
+const unsigned long DWELL_BUSCA_MS = 300;     // tempo em cada canal durante a varredura
 
-/* Classes */
-
-// Creating a new class that inherits from the ESP_NOW_Peer class is required.
-
-class ESP_NOW_Broadcast_Peer : public ESP_NOW_Peer {
-public:
-  // Constructor of the class using the broadcast address
-  ESP_NOW_Broadcast_Peer(uint8_t channel, wifi_interface_t iface, const uint8_t *lmk) : ESP_NOW_Peer(ESP_NOW.BROADCAST_ADDR, channel, iface, lmk) {}
-
-  // Destructor of the class
-  ~ESP_NOW_Broadcast_Peer() {
-    remove();
-  }
-
-  // Function to properly initialize the ESP-NOW and register the broadcast peer
-  bool begin() {
-    if (!ESP_NOW.begin() || !add()) {
-      log_e("Failed to initialize ESP-NOW or register the broadcast peer");
-      return false;
-    }
-    return true;
-  }
-
-  // Function to send a message to all devices within the network
-  bool send_message(const uint8_t *data, size_t len) {
-    if (!send(data, len)) {
-      log_e("Failed to broadcast message");
-      return false;
-    }
-    return true;
-  }
-};
-
-/* Global Variables */
-
-uint32_t msg_count = 0;
+uint8_t canalAtual = 1;
+bool canalConfirmado = false;
+volatile unsigned long ultimoAckMs = 0;
+unsigned long ultimaTrocaCanal = 0;
+uint16_t seq = 0;
 unsigned long ultimoEnvio = 0;
 
-// Create a broadcast peer object
-ESP_NOW_Broadcast_Peer broadcast_peer(ESPNOW_WIFI_CHANNEL, WIFI_IF_STA, NULL);
+void defineCanal(uint8_t c) {
+  canalAtual = c;
+  esp_wifi_set_channel(c, WIFI_SECOND_CHAN_NONE);
+}
+
+void aoReceberAck(const esp_now_recv_info_t *info, const uint8_t *dados, int tam) {
+  if (tam != sizeof(PacoteAck) || dados[0] != ACK_MAGICO) return;
+  ultimoAckMs = millis();
+  if (ultimoAckMs == 0) ultimoAckMs = 1;
+}
+
+void enviaPacote() {
+  PacoteLeitura p;
+  p.versao = PACOTE_VERSAO;
+  p.dedo = dedoPresente ? 1 : 0;
+  p.seq = seq++;
+  p.bpm = (bpmCount > 0) ? (int16_t)(mediana() + 0.5) : 0;      // 0 = ainda sem BPM válido
+  p.spo2 = (validSPO2 && spo2 > 0) ? (int16_t)spo2 : 0;          // 0 = ainda sem SpO2 válido
+  p.resp = RESP_SEM_SENSOR;                                      // respiração ainda não medida
+  Serial.printf("Enviando: hr:%i   spo2:%i   dedo:%i   canal:%u %s\n", p.bpm, p.spo2, p.dedo, canalAtual,
+                canalConfirmado ? "(gateway ok)" : "(procurando gateway)");
+  if (esp_now_send(BROADCAST, (uint8_t *)&p, sizeof(p)) != ESP_OK) Serial.println("Failed to broadcast message");
+}
+
+// Mantém o canal enquanto o gateway responde; senão, avança de canal.
+void cuidaDoCanal() {
+  unsigned long agora = millis();
+  unsigned long ack = ultimoAckMs;
+  bool ok = ack != 0 && agora - ack < ACK_TIMEOUT_MS;
+  if (ok != canalConfirmado) {
+    canalConfirmado = ok;
+    Serial.println(ok ? "Gateway encontrado." : "Gateway sumiu, procurando canal...");
+  }
+  if (!canalConfirmado && agora - ultimaTrocaCanal >= DWELL_BUSCA_MS) {
+    ultimaTrocaCanal = agora;
+    defineCanal(canalAtual % CANAL_MAX + 1);
+  }
+}
 
 /* Funções do BPM */
 
@@ -315,23 +328,25 @@ void setup() {
 
 // ESP NOW
 
-  // Initialize the Wi-Fi module
   WiFi.mode(WIFI_STA);
-  WiFi.setChannel(ESPNOW_WIFI_CHANNEL);
-  while (!WiFi.STA.started()) {
-    delay(100);
-  }
-
-  Serial.println("ESP-NOW Example - Broadcast Master");
-  Serial.println("Wi-Fi parameters:");
-  Serial.println("  Mode: STA");
+  WiFi.disconnect();
+  defineCanal(canalAtual);
+  Serial.println("RespirAI Master");
   Serial.println("  MAC Address: " + WiFi.macAddress());
-  Serial.printf("  Channel: %d\n", ESPNOW_WIFI_CHANNEL);
 
-  // Register the broadcast peer
-  if (!broadcast_peer.begin()) {
-    Serial.println("Failed to initialize broadcast peer");
-    Serial.println("Reebooting in 1 seconds...");
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("Failed to initialize ESP-NOW");
+    Serial.println("Rebooting in 1 seconds...");
+    delay(1000);
+    ESP.restart();
+  }
+  esp_now_register_recv_cb(aoReceberAck);
+  esp_now_peer_info_t peer = {};
+  memcpy(peer.peer_addr, BROADCAST, 6);
+  peer.channel = 0;  // 0 = canal atual (muda durante a busca)
+  peer.encrypt = false;
+  if (esp_now_add_peer(&peer) != ESP_OK) {
+    Serial.println("Failed to register the broadcast peer");
     delay(1000);
     ESP.restart();
   }
@@ -342,20 +357,11 @@ void setup() {
 
 void loop() {
   leSensor();
+  cuidaDoCanal();
 
   // envia a cada 1 segundo, sem travar a leitura do sensor
   if (millis() - ultimoEnvio >= 1000) {
     ultimoEnvio = millis();
-
-    // Broadcast a message to all devices within the network
-    int32_t data[3];
-    data[0] = (bpmCount > 0) ? (int32_t)(mediana() + 0.5) : 0;  // 0 = ainda sem BPM válido
-    data[1] = (validSPO2 && spo2 > 0) ? spo2 : 0;                // 0 = ainda sem SpO2 válido
-    data[2] = dedoPresente ? 1 : 0;
-    Serial.printf("Broadcasting message: hr:%i   spo2:%i   dedo:%i\n", data[0], data[1], data[2]);
-
-    if (!broadcast_peer.send_message((uint8_t *)data, sizeof(data))) {
-      Serial.println("Failed to broadcast message");
-    }
+    enviaPacote();
   }
 }
