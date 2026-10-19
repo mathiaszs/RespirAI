@@ -18,7 +18,7 @@ um **dashboard web** calcula um **escore de triagem** (eventos por hora e gravid
 |-------|-----------|--------|
 | Sensor + cálculo de BPM/SpO₂ + envio ESP-NOW | `firmware/ESP_NOW_Broadcast_Master/` | ✅ pronto |
 | Receptor ESP-NOW (exemplo) | `firmware/ESP_NOW_Broadcast_Slave/` | ✅ só imprime na serial |
-| Gateway ESP32 → Firebase | — | 🚧 **ainda não existe** |
+| Gateway ESP32 → Firebase | `firmware/RespirAI_Gateway/` | 🚧 escrito, **ainda não testado em hardware** |
 | Dashboard web | `public/` | ✅ funcionando (modo demo e modo Firebase) |
 
 O formato de dados esperado pelo dashboard, o que o firmware envia hoje e as lacunas para a integração estão em

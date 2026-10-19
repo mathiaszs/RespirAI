@@ -2,7 +2,7 @@
 
 Este documento descreve o formato **exato** que o dashboard (`public/`) espera ler do Firebase Realtime Database,
 o que o firmware (`firmware/ESP_NOW_Broadcast_Master`) envia hoje e as **lacunas** para integrar os dois.
-Nada aqui foi implementado: a seção 4 é só proposta.
+A seção 4 era a proposta; o gateway (`firmware/RespirAI_Gateway`) e o novo pacote ESP-NOW já a implementam em parte, **sem teste em hardware** (ver seção 5).
 
 Fontes: `public/fonte-firebase.js`, `public/app.js`, `public/historico.js`, `public/escore-apneia.js` e os dois sketches de `firmware/`.
 
@@ -164,3 +164,22 @@ Caminho: `/leituras/<dispositivoId>/<push-id>` com exatamente os campos da seç�
 3. Definir a fonte de respiração e acrescentar `resp`.
 4. Versionar regras e documentar `/donos`.
 5. Buffer offline e contador de sequência.
+
+## 5. Estado da implementação
+
+| Lacuna | Estado |
+|--------|--------|
+| 1 gateway Firebase | Escrito (`firmware/RespirAI_Gateway`), **não compilado/testado** |
+| 2 timestamp | NTP no gateway, `timestamp` em ms (64 bits) |
+| 3 nomes dos campos | Gateway mapeia `bpm`/`spo2` |
+| 4 ID do dispositivo | `DISPOSITIVO_ID` em `secrets.h` |
+| 5 autorização de escrita | Gateway entra com e-mail/senha; **regras do banco ainda precisam ser criadas/conferidas no console** |
+| 6 canal Wi-Fi | Master varre canais até receber o ACK do gateway |
+| 7 respiração | **Pendente**: `resp` reservado no pacote (`RESP_SEM_SENSOR`); falta medir com o piezo |
+| 8 leituras inválidas | Gravadas com 0 |
+| 9 perda de pacotes | `seq` no pacote; gateway conta perdidas na serial |
+| 10 fila offline | Fila em RAM (~15 min) |
+| 11 relógio | NTP; leituras descartadas sem hora válida |
+| 12 volume | Envio em lote (≤30 leituras por requisição, a cada 3 s) |
+| 13–14 regras / `/donos` | **Pendente** |
+| 15 versionamento do payload | `PacoteLeitura` com `versao` |
