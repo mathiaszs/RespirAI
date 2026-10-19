@@ -117,7 +117,12 @@ em `/leituras/<id>`, no formato do dashboard.
 export FIREBASE_USUARIO='gateway@exemplo.com'   # usuário do Authentication (não commitar!)
 export FIREBASE_SENHA_USUARIO='...'
 node tools/simular-dispositivo.mjs --id respirai-01 --historico 360 --ao-vivo
+
+# uma noite completa (23h às 7h) em uma data passada, para a aba "Noite" e o relatório em PDF:
+node tools/simular-dispositivo.mjs --id respirai-01 --noite 2026-10-18
 ```
+
+No Windows (PowerShell), defina as variáveis com `$env:FIREBASE_USUARIO = '...'`; se `npx` for bloqueado, use `npx.cmd`.
 
 Depois abra o dashboard, entre, digite o mesmo ID em "dispositivo" e veja a noite de hoje (aba Noite) e a aba Ao vivo.
 O usuário precisa ter permissão de escrita em `/leituras/<id>` nas regras do banco.

@@ -42,31 +42,22 @@ Cada tarefa diz *o que é*, *por que*, *como fazer* e *como saber que deu certo*
 
 ---
 
-## Tarefa 2: Criar os usuários no Firebase
+## Tarefa 2: Criar um usuário no Firebase (simples)
 
-**Por quê:** o dashboard só mostra dados para quem está logado, e o simulador/gateway também precisa de um login para gravar. Recomendo **dois usuários separados**: um seu (para ver o dashboard) e um do "dispositivo" (para gravar).
+Um único usuário serve para o dashboard e para o simulador/gateway.
 
-1. Acesse https://console.firebase.google.com e abra o projeto **tcc-mecatronica-b7885**.
-2. Menu da esquerda: **Build → Authentication** → aba **Sign-in method** (Método de login).
-3. Clique em **E-mail/senha**, ative o primeiro botão e salve.
-4. Aba **Users** → **Add user**:
-   - Usuário 1 (dashboard): seu e-mail e uma senha **forte e nova** (não use a que apareceu na nossa conversa).
-   - Usuário 2 (dispositivo): por exemplo `gateway@respirai.com` (não precisa ser um e-mail real) e outra senha forte.
-5. Aba **Settings → User actions**: desmarque **Enable create (sign-up)**.
-   *Por quê:* como a apiKey é pública, qualquer pessoa poderia criar uma conta no seu projeto. Desligar o cadastro livre impede isso; só você cria usuários.
+1. https://console.firebase.google.com → projeto **tcc-mecatronica-b7885** → **Build → Authentication**.
+2. **Sign-in method → E-mail/senha** → ativar → Salvar.
+3. **Users → Add user**: e-mail e senha (6 caracteres ou mais).
 
-✅ **Deu certo se:** a lista de *Users* mostra os dois e-mails.
+✅ Deu certo se o e-mail aparece na lista de usuários.
 
 ---
 
-## Tarefa 3: Conferir e ajustar as regras do banco
+## Tarefa 3: Regras do banco (simples)
 
-**Por quê:** é a tarefa mais importante. As regras decidem quem lê e escreve. O dashboard dá "Sem permissão" ou "Falta o índice" se isso estiver errado.
-
-1. No console: **Build → Realtime Database**. Se aparecer o botão "Criar banco de dados", o banco ainda não existe: crie e escolha o modo **bloqueado** (locked mode). Anote que a URL do banco tem de ser `https://tcc-mecatronica-b7885-default-rtdb.firebaseio.com` (a mesma de `public/fonte-firebase.js`).
-2. Aba **Regras (Rules)**. **Copie o que está lá para um bloco de notas** (backup).
-3. Se quiser que eu confira suas regras atuais, cole o texto na conversa antes de mudar.
-4. Para o teste de amanhã, substitua por estas regras (troque os dois e-mails pelos reais):
+1. **Build → Realtime Database** (crie o banco, em modo bloqueado, se ainda não existir) → aba **Regras**.
+2. Copie o texto atual para um bloco de notas (backup) e depois substitua por:
 
 ```json
 {
@@ -74,25 +65,15 @@ Cada tarefa diz *o que é*, *por que*, *como fazer* e *como saber que deu certo*
     "leituras": {
       "$dispositivo": {
         ".indexOn": ["timestamp"],
-        ".read":  "auth != null && (auth.token.email === 'SEU_EMAIL@exemplo.com' || auth.token.email === 'gateway@respirai.com')",
-        ".write": "auth != null && auth.token.email === 'gateway@respirai.com'"
+        ".read": "auth != null",
+        ".write": "auth != null"
       }
     }
   }
 }
 ```
 
-   O que cada linha faz:
-   - `"$dispositivo"`: vale para qualquer ID (`respirai-01`, etc.).
-   - `.indexOn: ["timestamp"]`: cria o índice que o dashboard exige.
-   - `.read`: só os dois e-mails listados leem.
-   - `.write`: só o usuário do dispositivo grava.
-   - Tudo o que não está listado (`/donos`, outras pastas) fica **bloqueado** por padrão.
-5. Clique em **Publicar**.
-
-⚠️ Essas regras são simples e boas para o teste. Para o TCC final, o ideal é vincular cada usuário a seus dispositivos (era a ideia do `/donos`); podemos fazer depois.
-
-✅ **Deu certo se:** o botão Publicar confirma sem erro de sintaxe.
+3. **Publicar**. Qualquer usuário logado lê e grava; suficiente para o teste, não para um produto real.
 
 ---
 
@@ -104,15 +85,18 @@ No terminal, dentro da pasta do projeto:
 
 **Windows (PowerShell):**
 ```powershell
-$env:FIREBASE_USUARIO = 'gateway@respirai.com'
-$env:FIREBASE_SENHA_USUARIO = 'a-senha-do-usuario-2'
+$env:FIREBASE_USUARIO = 'seu-email@exemplo.com'
+$env:FIREBASE_SENHA_USUARIO = 'sua-senha'
 node tools/simular-dispositivo.mjs --id respirai-01 --historico 360 --ao-vivo
 ```
 
+Para a aba **Noite** (que cobre das 18h às 12h do dia seguinte), grave uma noite completa em uma data passada:
+`node tools/simular-dispositivo.mjs --id respirai-01 --noite 2026-10-18` (23h às 7h). Depois escolha essa data na aba Noite.
+
 **Mac/Linux:**
 ```bash
-export FIREBASE_USUARIO='gateway@respirai.com'
-export FIREBASE_SENHA_USUARIO='a-senha-do-usuario-2'
+export FIREBASE_USUARIO='seu-email@exemplo.com'
+export FIREBASE_SENHA_USUARIO='sua-senha'
 node tools/simular-dispositivo.mjs --id respirai-01 --historico 360 --ao-vivo
 ```
 
@@ -134,9 +118,9 @@ Erros comuns:
 
 ## Tarefa 5: Ver no dashboard
 
-1. Em **outro** terminal, na pasta do projeto: `npx http-server public -p 5050 -c-1` e abra http://localhost:5050.
+1. Em **outro** terminal, na pasta do projeto: `npx.cmd http-server public -p 5050 -c-1` (no Windows, `npx.cmd` evita o bloqueio de scripts do PowerShell; nos outros sistemas, `npx`) e abra http://localhost:5050.
    (O dashboard também está hospedado no Firebase Hosting, mas o local é suficiente para testar.)
-2. No seletor **Dados** (topo da página), escolha **Meu dispositivo** e entre (botão **Entrar**) com o **usuário 1** (o seu).
+2. No seletor **Dados** (topo da página), escolha **Meu dispositivo** e entre (botão **Entrar**) com o usuário que você criou.
 3. No campo **dispositivo**, digite `respirai-01`.
 4. Aba **Noite**: escolha a data **de hoje** (a "noite" vai das 18h do dia até 12h do dia seguinte) e clique em **Ver noite**.
    Se você rodou o simulador de dia, o histórico de 6 h pode estar fora da janela das 18h–12h. Nesse caso, use a aba **Ao vivo**, que mostra os últimos 30 minutos independentemente do horário. Ou rode o simulador à noite.
@@ -158,7 +142,7 @@ Só **compilar** (verificar se o código não tem erros). Não precisa de placa 
 1. Instale o **Arduino IDE 2.x** (https://www.arduino.cc/en/software).
 2. *Ferramentas → Placa → Gerenciador de placas*: instale **esp32 by Espressif Systems** (versão 3.x).
 3. *Ferramentas → Gerenciar bibliotecas*: instale **Firebase Arduino Client Library for ESP8266 and ESP32** (autor Mobizt) e, para o Master, **SparkFun MAX3010x Pulse and Proximity Sensor Library**.
-4. Em `firmware/RespirAI_Gateway/`, copie `secrets.h.example` para `secrets.h` e preencha: nome e senha do Wi-Fi, usuário/senha do usuário 2, `DISPOSITIVO_ID` igual a `respirai-01`. (`secrets.h` não vai para o GitHub.)
+4. Em `firmware/RespirAI_Gateway/`, copie `secrets.h.example` para `secrets.h` e preencha: nome e senha do Wi-Fi, e-mail/senha do usuário do Firebase, `DISPOSITIVO_ID` igual a `respirai-01`. (`secrets.h` não vai para o GitHub.)
 5. Abra `RespirAI_Gateway.ino`, escolha o modelo do seu ESP32 em *Placa* e clique em **Verificar** (✓).
 6. Copie **todas** as mensagens de erro e me envie; é provável que precisem de pequenos ajustes, pois o código ainda não foi compilado.
 

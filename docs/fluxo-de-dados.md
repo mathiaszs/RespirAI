@@ -183,3 +183,18 @@ Caminho: `/leituras/<dispositivoId>/<push-id>` com exatamente os campos da seç�
 | 12 volume | Envio em lote (≤30 leituras por requisição, a cada 3 s) |
 | 13–14 regras / `/donos` | **Pendente** |
 | 15 versionamento do payload | `PacoteLeitura` com `versao` |
+
+## 6. Regras do banco (atualização)
+
+As regras originais do projeto eram:
+
+```json
+"leituras": { "$dispositivoId": {
+  ".read":  "auth != null && root.child('donos').child($dispositivoId).val() === auth.uid",
+  ".write": "auth != null && auth.uid === $dispositivoId",
+  "$leituraId": { ".validate": "newData.hasChildren(['timestamp', 'spo2', 'bpm'])" } } },
+"donos": { ".read": false, ".write": false }
+```
+
+Ou seja: `/donos/<dispositivoId>` guarda o **UID do usuário dono**; só o dono lê; só um usuário cujo **UID é igual ao ID do dispositivo** grava; toda leitura precisa ter `timestamp`, `spo2` e `bpm`. Faltava o `.indexOn`.
+Para o teste do TCC elas foram substituídas por regras simples (qualquer usuário logado lê e grava em `/leituras/<id>`, com `.indexOn: ["timestamp"]`), porque o console do Firebase não permite escolher o UID de um usuário.
