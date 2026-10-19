@@ -136,7 +136,7 @@ Erros comuns:
 
 1. Em **outro** terminal, na pasta do projeto: `npx http-server public -p 5050 -c-1` e abra http://localhost:5050.
    (O dashboard também está hospedado no Firebase Hosting, mas o local é suficiente para testar.)
-2. Clique para entrar (login) com o **usuário 1** (o seu).
+2. No seletor **Dados** (topo da página), escolha **Meu dispositivo** e entre (botão **Entrar**) com o **usuário 1** (o seu).
 3. No campo **dispositivo**, digite `respirai-01`.
 4. Aba **Noite**: escolha a data **de hoje** (a "noite" vai das 18h do dia até 12h do dia seguinte) e clique em **Ver noite**.
    Se você rodou o simulador de dia, o histórico de 6 h pode estar fora da janela das 18h–12h. Nesse caso, use a aba **Ao vivo**, que mostra os últimos 30 minutos independentemente do horário. Ou rode o simulador à noite.
