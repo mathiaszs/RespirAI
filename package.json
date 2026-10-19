@@ -1,0 +1,10 @@
+{
+  "name": "respirai",
+  "private": true,
+  "type": "module",
+  "description": "Monitor de apneia do sono (TCC de Mecatrônica): dashboard web + firmware ESP32.",
+  "scripts": {
+    "test": "node --test \"tests/*.test.js\"",
+    "start": "npx http-server public -p 5050 -c-1"
+  }
+}
