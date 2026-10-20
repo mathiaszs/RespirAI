@@ -106,6 +106,28 @@ void enviaAck() {
 
 /* Wi-Fi e Firebase */
 
+// O ESP32 reconecta sozinho (WiFi.setAutoReconnect). Só se passar 1 min desconectado
+// refazemos a conexão do zero; chamar WiFi.begin() o tempo todo atrapalha a reconexão.
+// Recuperar o Wi-Fi pode mudar o canal do roteador; o Master varre de novo se precisar.
+void cuidaDoWiFi() {
+  static unsigned long desde = 0;
+  if (WiFi.status() == WL_CONNECTED) {
+    if (desde) Serial.println("Wi-Fi reconectado.");
+    desde = 0;
+    return;
+  }
+  if (desde == 0) {
+    desde = millis();
+    Serial.println("Wi-Fi caiu. Aguardando reconexão automática...");
+  }
+  if (millis() - desde > 60000) {
+    Serial.println("Ainda sem Wi-Fi. Reiniciando a conexão.");
+    WiFi.disconnect();
+    WiFi.begin(WIFI_SSID, WIFI_SENHA);
+    desde = millis();
+  }
+}
+
 bool conectaWiFi() {
   if (WiFi.status() == WL_CONNECTED) return true;
   WiFi.begin(WIFI_SSID, WIFI_SENHA);
@@ -162,6 +184,7 @@ void enviaFila() {
 void setup() {
   Serial.begin(115200);
   WiFi.mode(WIFI_STA);
+  WiFi.setAutoReconnect(true);
 
   Serial.printf("Conectando a %s...\n", WIFI_SSID);
   if (!conectaWiFi()) {
@@ -210,10 +233,7 @@ void loop() {
     precisaAck = false;
     enviaAck();
   }
-  if (WiFi.status() != WL_CONNECTED) {
-    // Recuperar o Wi-Fi pode mudar o canal do roteador; o Master varre de novo se precisar.
-    conectaWiFi();
-  }
+  cuidaDoWiFi();
   if (millis() - ultimoEnvio >= INTERVALO_ENVIO_MS) {
     ultimoEnvio = millis();
     enviaFila();
