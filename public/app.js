@@ -336,7 +336,7 @@ function desenharComparacao(el, indice, gravidade, referencia) {
   const topo = document.createElement('div');
   topo.className = 'comparacao-topo';
   const titulo = document.createElement('strong');
-  titulo.textContent = 'Comparado ao exame de laboratório (polissonografia) da mesma noite';
+  titulo.textContent = 'Exame de laboratório (polissonografia) da mesma noite';
   const concorda = document.createElement('span');
   concorda.className = `concorda${mesma ? '' : ' nao'}`;
   concorda.append(iconeEstado(mesma ? 'ok' : 'alerta', mesma ? '--bom' : '--atencao'), mesma ? 'Mesma classificação' : 'Classificação diferente');
@@ -352,26 +352,35 @@ function desenharComparacao(el, indice, gravidade, referencia) {
     i.style.setProperty('--cor', `var(${GRAVIDADE[nome].cor})`);
     faixas.append(i);
   }
-  const pino = (classe, rotulo, valor) => {
+  const pino = (classe, valor) => {
     const p = document.createElement('span');
     p.className = `pino ${classe}`;
-    const b = document.createElement('b');
-    b.textContent = fmt(valor);
-    const t = document.createElement('span');
-    t.append(rotulo, b);
-    p.append(t);
     p.style.left = '0%';
     requestAnimationFrame(() => requestAnimationFrame(() => (p.style.left = `${posicaoNaEscala(valor) * 100}%`)));
     return p;
   };
-  regua.append(faixas, pino('monitor', 'RespirAI', indice), pino('exame', 'Exame', referencia.iah));
+  regua.append(faixas, pino('exame', referencia.iah), pino('monitor', indice));
+
+  const numeros = document.createElement('div');
+  numeros.className = 'comparacao-numeros';
+  numeros.setAttribute('aria-hidden', 'true');
+  for (const [classe, rotulo, valor] of [['monitor', 'RespirAI', indice], ['exame', 'Exame', referencia.iah]]) {
+    const item = document.createElement('div');
+    item.className = classe;
+    const t = document.createElement('span');
+    t.textContent = rotulo;
+    const b = document.createElement('b');
+    b.textContent = fmt(valor);
+    item.append(t, b);
+    numeros.append(item);
+  }
 
   const texto = document.createElement('p');
   texto.className = 'visualmente-oculto';
   texto.textContent =
     `O exame encontrou ${fmt(referencia.iah)} eventos por hora (${GRAVIDADE[classeRef].titulo.toLowerCase()}); ` +
     `o RespirAI, ${fmt(indice)} (${GRAVIDADE[gravidade].titulo.toLowerCase()}).`;
-  el.append(topo, regua, texto);
+  el.append(topo, numeros, regua, texto);
 }
 
 function metrica({ icone, titulo, valor, unidade, detalhe, classe }) {
