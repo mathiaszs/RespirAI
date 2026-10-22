@@ -33,6 +33,6 @@ sumir por 5 s (ex.: o roteador mudou de canal), o Master varre de novo. Não é 
 
 ## Limitações conhecidas
 
-- **Respiração ainda não é medida**: o Master envia `resp = RESP_SEM_SENSOR` e o gateway omite o campo; o dashboard calcula só pelas dessaturações.
+- **Respiração ainda não é medida**: o piezo fica neste ESP32 (na cinta do peito), mas o algoritmo que conta as respirações ainda não foi escrito. Enquanto isso o campo `resp` não é gravado e o dashboard calcula só pelas dessaturações. (O Master envia `resp = RESP_SEM_SENSOR`: a respiração não vem por ESP-NOW.)
 - Fila em RAM (≈15 min); se o gateway reiniciar, perde o que não foi enviado.
 - Sem criptografia no ESP-NOW (broadcast). Os dados trafegam para o Firebase via TLS.

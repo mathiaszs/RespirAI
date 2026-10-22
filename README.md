@@ -10,15 +10,21 @@ um **dashboard web** calcula um **escore de triagem** (eventos por hora e gravid
 ## Arquitetura
 
 ```
- MAX30102 ──I²C──▶ ESP32 (Master) ──ESP-NOW, 1 Hz──▶ ESP32 (gateway) ──Wi-Fi──▶ Firebase ──▶ Dashboard web
- (BPM, SpO₂)       calcula BPM/SpO₂                    recebe e envia          Realtime DB     (Firebase Hosting)
+ ┌─ ESP32 no dedo (Master) ─┐                ┌─ ESP32 na cinta do peito (gateway) ─┐
+ │ MAX30102: SpO₂ e BPM     │ ──ESP-NOW────▶ │ piezo: respiração (em integração)    │ ──Wi-Fi──▶ Firebase ──▶ Dashboard web
+ │ calcula BPM/SpO₂         │    1 Hz        │ junta tudo, carimba a hora (NTP)     │            Realtime DB   (Firebase Hosting)
+ └──────────────────────────┘                └──────────────────────────────────────┘
 ```
+
+Os dois ESP32 têm sensores. O do dedo mede oxigênio e batimentos e envia por ESP-NOW (rádio direto entre os dois,
+sem roteador). O da cinta do peito mede a respiração com o piezo, recebe as leituras do dedo e envia tudo ao Firebase.
 
 | Etapa | Onde está | Estado |
 |-------|-----------|--------|
-| Sensor + cálculo de BPM/SpO₂ + envio ESP-NOW | `firmware/ESP_NOW_Broadcast_Master/` | ✅ pronto |
-| Receptor ESP-NOW (exemplo) | `firmware/ESP_NOW_Broadcast_Slave/` | ✅ só imprime na serial |
-| Gateway ESP32 → Firebase | `firmware/RespirAI_Gateway/` | 🚧 escrito, **ainda não testado em hardware** |
+| ESP32 no dedo: MAX30102 + cálculo de BPM/SpO₂ + envio ESP-NOW | `firmware/ESP_NOW_Broadcast_Master/` | ✅ pronto |
+| Receptor ESP-NOW (exemplo antigo, lia o piezo) | `firmware/ESP_NOW_Broadcast_Slave/` | ✅ só imprime na serial |
+| ESP32 do peito: recebe ESP-NOW e envia ao Firebase | `firmware/RespirAI_Gateway/` | 🚧 escrito, **ainda não testado em hardware** |
+| ESP32 do peito: respiração pelo piezo | — | 🚧 **ainda não existe** |
 | Dashboard web | `public/` | ✅ funcionando (modo demo e modo Firebase) |
 
 O formato de dados esperado pelo dashboard, o que o firmware envia hoje e as lacunas para a integração estão em
@@ -79,7 +85,7 @@ Para apresentar em feira ou banca: botão **Modo Feira** no topo do painel (abre
 2. **Agora**: reprodução em tempo real da pausa mais longa de uma noite grave, com o aviso de "pausa na respiração";
 3. resultado da noite (medidor de gravidade);
 4. comparação com a polissonografia;
-5. como funciona (sensor → ESP-NOW → gateway → Firebase → painel).
+5. como funciona (ESP32 do dedo → ESP-NOW → ESP32 do peito → Firebase → painel).
 
 Um QR code no canto leva ao painel publicado (`https://tcc-mecatronica-b7885.web.app/`). Qualquer toque passa para o
 controle manual; depois de 1 minuto sem interação o roteiro volta sozinho.
