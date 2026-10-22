@@ -287,28 +287,25 @@
     <section id="tela-como" role="tabpanel" aria-labelledby="aba-como" hidden>
       <div class="como-intro">
         <p class="sobretitulo">Como funciona</p>
-        <h2 class="titulo-grande">Do dedo à tela, <span class="gradiente">uma leitura por segundo</span></h2>
+        <h2 class="titulo-grande">Do corpo à tela, <span class="gradiente">uma leitura por segundo</span></h2>
         <p class="secundario">Apneia do sono são pausas na respiração durante o sono. Elas derrubam o oxigênio do sangue e
-          fragmentam o descanso, mas a maioria das pessoas com apneia não sabe que tem.</p>
+          fragmentam o descanso, mas a maioria das pessoas com apneia não sabe que tem. O RespirAI usa dois ESP32 com sensores:
+          um no dedo e outro numa cinta no peito.</p>
       </div>
 
       <ol class="fluxo" aria-label="Caminho dos dados">
-        <li class="no no-sensor">
-          <span class="no-icone" data-icone="sensor"></span>
-          <strong>Sensores</strong>
-          <span>MAX30102 no dedo mede oxigênio e batimentos; um piezo na cinta do peito vai medir a respiração <em class="tag">em integração</em></span>
-        </li>
-        <li class="elo" aria-hidden="true"><i></i><i></i><i></i><small>ESP-NOW</small></li>
-        <li class="no no-master">
+        <li class="no no-dedo">
           <span class="no-icone" data-icone="chip"></span>
-          <strong>ESP32 no corpo</strong>
-          <span>Calcula BPM e SpO₂ e transmite por rádio, sem fio e sem roteador</span>
+          <strong>ESP32 no dedo</strong>
+          <span class="pilula pilula-oxigenio"><i data-icone="oxigenio"></i>MAX30102 · SpO₂ e BPM</span>
+          <span>Calcula BPM e SpO₂ e envia uma leitura por segundo</span>
         </li>
-        <li class="elo" aria-hidden="true"><i></i><i></i><i></i><small>rádio</small></li>
-        <li class="no no-gateway">
+        <li class="elo elo-destaque" aria-hidden="true"><i></i><i></i><i></i><small>ESP-NOW<br>sem roteador</small></li>
+        <li class="no no-peito">
           <span class="no-icone" data-icone="antena"></span>
-          <strong>ESP32 gateway</strong>
-          <span>Recebe, carimba a hora (NTP) e envia à nuvem pelo Wi-Fi</span>
+          <strong>ESP32 na cinta do peito</strong>
+          <span class="sensores"><span class="pilula pilula-respiracao"><i data-icone="respiracao"></i>Piezo · respiração</span><em class="tag">em integração</em></span>
+          <span>Recebe o ESP-NOW, junta com a respiração, carimba a hora (NTP) e envia pelo Wi-Fi</span>
         </li>
         <li class="elo" aria-hidden="true"><i></i><i></i><i></i><small>Wi-Fi</small></li>
         <li class="no no-nuvem">

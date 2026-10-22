@@ -73,7 +73,7 @@ export function criarModoFeira(api) {
     },
     {
       titulo: 'Como funciona',
-      texto: 'Do sensor no dedo até esta tela, uma leitura por segundo.',
+      texto: 'Dois ESP32 com sensores, um no dedo e outro no peito, conversam por ESP-NOW; o do peito envia tudo à nuvem.',
       duracao: 16_000,
       entrar() {
         api.trocarAba('como');
