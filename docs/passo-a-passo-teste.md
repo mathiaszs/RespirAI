@@ -152,7 +152,7 @@ Só **compilar** (verificar se o código não tem erros). Não precisa de placa 
 
 ## Plano B para amanhã
 
-Se algo da nuvem falhar na hora: o **modo demonstração** do dashboard (no seletor de fonte, a opção "Noites de exemplo") funciona **sem internet, sem login e sem dispositivo**, com noites reais de polissonografia. Teste-o hoje também.
+Se algo da nuvem falhar na hora: o **modo demonstração** do dashboard (no seletor de fonte, a opção "Noites de exemplo") funciona **sem internet, sem login e sem dispositivo**, com noites reais de polissonografia. Para apresentar, use o botão **Modo Feira**. Teste-o hoje também.
 
 ## Antes de dormir
 

@@ -1,14 +1,14 @@
 // Relatório da noite em PDF, gerado no próprio navegador com jsPDF (e AutoTable para as tabelas).
-// As bibliotecas só são baixadas quando alguém pede o relatório. O PDF usa sempre as cores do tema claro,
+// As bibliotecas (cópias locais em vendor/) só são carregadas quando alguém pede o relatório. O PDF usa sempre as cores do tema claro,
 // porque é feito para imprimir; os gráficos são desenhados em vetor, não copiados da tela.
 
 const BIBLIOTECAS = [
   [
-    'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+    'vendor/jspdf.umd.min.js',
     'sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk',
   ],
   [
-    'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js',
+    'vendor/jspdf.plugin.autotable.min.js',
     'sha384-fCAW/rDWORTbQXSiB7mOg0QtQ5c+r0f544y6XoKjuVva0nMBlCpNUjiFeG5iMdS3',
   ],
 ];
@@ -48,7 +48,7 @@ function carregarBibliotecas() {
         s.integrity = integrity;
         s.crossOrigin = 'anonymous';
         s.onload = ok;
-        s.onerror = () => falha(new Error('não consegui baixar o gerador de PDF. Confira a conexão com a internet.'));
+        s.onerror = () => falha(new Error('não consegui carregar o gerador de PDF.'));
         document.head.append(s);
       });
     }

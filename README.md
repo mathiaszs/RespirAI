@@ -29,12 +29,14 @@ O formato de dados esperado pelo dashboard, o que o firmware envia hoje e as lac
 ```
 public/                  Dashboard (JavaScript puro, sem build), publicado no Firebase Hosting
   index.html, estilo.css
-  app.js                 Interface e lógica das telas (Noite, Ao vivo, Histórico)
+  app.js                 Interface e lógica das telas (Noite, Agora, Histórico, Como funciona)
+  modo-feira.js          Apresentação automática para feiras
   escore-apneia.js       Cálculo do índice de eventos/hora e da gravidade
   fonte-firebase.js      Leitura do Realtime Database + login
   fonte-demo.js          Modo demonstração (arquivos em demo/)
   graficos.js, historico.js, relatorio-pdf.js
   demo/                  Noites reais de exemplo (UCD Sleep Apnea Database)
+  vendor/                Bibliotecas e fontes locais (uPlot, jsPDF, QR code, Plus Jakarta Sans, Space Grotesk; licenças junto)
 firmware/                Sketches Arduino/ESP32
 docs/fluxo-de-dados.md   Contrato de dados e lacunas de integração
 tests/                   Testes unitários do escore (node:test)
@@ -57,7 +59,7 @@ O modo **Firebase** exige internet (o SDK é carregado de `gstatic.com`) e um lo
 
 ## Modo demonstração
 
-O modo demo funciona **sem internet, sem login e sem dispositivo**. Ele carrega noites reais de polissonografia da
+O modo demo funciona **sem internet, sem login e sem dispositivo**: as bibliotecas (uPlot, jsPDF, QR code) e as fontes ficam em `public/vendor/`. Ele carrega noites reais de polissonografia da
 base pública *St. Vincent's University Hospital / University College Dublin Sleep Apnea Database* (PhysioNet),
 guardadas em `public/demo/*.json`:
 
@@ -67,6 +69,28 @@ guardadas em `public/demo/*.json`:
 O dashboard processa essas noites **exatamente como as do dispositivo** (mesmo formato `amostras` + `respiracoes`) e
 mostra, ao lado do resultado calculado, o IAH de referência da base. Na aba "Ao vivo" o demo reproduz a noite
 como se estivesse chegando em tempo real. É a forma recomendada de avaliar o escore e de apresentar o trabalho sem hardware.
+
+## Modo Feira
+
+Para apresentar em feira ou banca: botão **Modo Feira** no topo do painel (abre em tela cheia) ou o endereço
+`http://localhost:5050/?feira=1`. O painel roda sozinho, em loop, com as noites de exemplo:
+
+1. abertura (o que é apneia);
+2. **Agora**: reprodução em tempo real da pausa mais longa de uma noite grave, com o aviso de "pausa na respiração";
+3. resultado da noite (medidor de gravidade);
+4. comparação com a polissonografia;
+5. como funciona (sensor → ESP-NOW → gateway → Firebase → painel).
+
+Um QR code no canto leva ao painel publicado (`https://tcc-mecatronica-b7885.web.app/`). Qualquer toque passa para o
+controle manual; depois de 1 minuto sem interação o roteiro volta sozinho.
+
+| Tecla | Ação |
+|-------|------|
+| ← / → | cena anterior / próxima |
+| Espaço | pausa / continua o roteiro |
+| 1, 2, 3 | abre a noite de exemplo 1, 2 ou 3 |
+| F | tela cheia |
+| Esc | sai do Modo Feira |
 
 ## Testes
 

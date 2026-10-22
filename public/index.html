@@ -3,38 +3,48 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Monitor de Apneia</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.min.css">
+  <title>RespirAI · Monitor de apneia do sono</title>
+  <meta name="description" content="RespirAI: monitor de apneia do sono feito como TCC de Mecatrônica.">
+  <meta name="theme-color" content="#0b1026">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2322d3ee'/%3E%3Cstop offset='1' stop-color='%23a78bfa'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='9' fill='url(%23g)'/%3E%3Cpath d='M5 17h5l2.5-6 4 12 3-9 2 3H27' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="vendor/uPlot.min.css">
   <link rel="stylesheet" href="estilo.css">
-  <script src="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.iife.min.js"></script>
+  <script src="vendor/uPlot.iife.min.js"></script>
   <script type="module" src="app.js"></script>
 </head>
 <body>
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+
   <header class="topo">
     <div class="marca">
       <span id="logo" class="logo" aria-hidden="true"></span>
       <div>
-        <h1>Monitor de Apneia</h1>
-        <p class="secundario">Como foi a sua respiração durante o sono</p>
+        <h1><span class="nome">Respir<b>AI</b></span></h1>
+        <p class="tagline">Seu sono, respiração por respiração</p>
       </div>
     </div>
     <div class="acoes-topo">
-      <label class="compacto">Dados
-        <select id="fonte">
+      <label class="compacto seletor-fonte">
+        <span class="visualmente-oculto">Dados</span>
+        <select id="fonte" aria-label="De onde vêm os dados">
           <option value="demo">Noites de exemplo</option>
           <option value="firebase">Meu dispositivo</option>
         </select>
       </label>
+      <button id="botao-feira" class="botao botao-feira" type="button" title="Modo Feira: apresentação automática em tela cheia">
+        <span>Modo Feira</span>
+      </button>
       <button id="tema" class="botao-icone" type="button"></button>
     </div>
   </header>
 
   <main>
-    <div class="abas" role="tablist" aria-label="Telas">
+    <nav class="abas" role="tablist" aria-label="Telas">
       <button class="aba" role="tab" id="aba-noite" aria-selected="true" aria-controls="tela-noite" type="button">Resumo da noite</button>
-      <button class="aba" role="tab" id="aba-vivo" aria-selected="false" aria-controls="tela-vivo" type="button">Agora</button>
+      <button class="aba" role="tab" id="aba-vivo" aria-selected="false" aria-controls="tela-vivo" type="button"><span class="ponto-vivo" aria-hidden="true"></span>Agora</button>
       <button class="aba" role="tab" id="aba-historico" aria-selected="false" aria-controls="tela-historico" type="button">Histórico</button>
-    </div>
+      <button class="aba" role="tab" id="aba-como" aria-selected="false" aria-controls="tela-como" type="button">Como funciona</button>
+    </nav>
 
     <div class="seletor">
       <label id="campo-demo">Noite de exemplo
@@ -62,81 +72,89 @@
 
     <p id="mensagem" class="mensagem" role="status" hidden></p>
 
+    <!-- ===================== RESUMO DA NOITE ===================== -->
     <section id="tela-noite" role="tabpanel" aria-labelledby="aba-noite">
-      <div class="cabecalho-secao">
-        <div>
-          <h2 class="titulo-secao">Como foi a noite</h2>
-          <p id="periodo" class="secundario"></p>
-        </div>
-        <button id="baixar-pdf" class="botao botao-icone-texto" type="button" disabled>Baixar relatório (PDF)</button>
-      </div>
-      <div id="cartoes-noite" class="cartoes"></div>
-
-      <article class="cartao resultado">
-        <p class="rotulo">Resultado da triagem</p>
-        <div class="resultado-principal">
+      <article class="cartao heroi" id="cartao-heroi">
+        <div class="heroi-topo">
           <div>
-            <p class="valor-heroi"><span id="ier">—</span><span class="unidade">eventos por hora</span></p>
-            <p id="gravidade" class="selo"></p>
+            <p class="sobretitulo">Resultado da triagem</p>
+            <p id="periodo" class="secundario"></p>
           </div>
-          <div id="escala" class="escala" role="img"></div>
+          <div class="heroi-acoes">
+            <span id="selo-origem" class="selo-origem" hidden></span>
+            <button id="baixar-pdf" class="botao botao-fantasma botao-icone-texto" type="button" disabled>Baixar relatório (PDF)</button>
+          </div>
         </div>
-        <p id="frase" class="frase"></p>
-        <p id="orientacao" class="orientacao"></p>
+
+        <div class="heroi-corpo">
+          <div id="escala" class="medidor" role="img"></div>
+          <div class="heroi-texto">
+            <p class="valor-heroi"><span id="ier">—</span><span class="unidade">eventos<br>por hora</span></p>
+            <p id="gravidade" class="selo"></p>
+            <p id="frase" class="frase"></p>
+            <p id="orientacao" class="orientacao"></p>
+          </div>
+        </div>
+
         <ul id="avisos" class="avisos"></ul>
-        <p id="comparacao" class="comparacao" hidden></p>
-        <p class="aviso">Este monitor faz uma triagem e não substitui o diagnóstico médico.</p>
+        <div id="comparacao" class="comparacao" hidden></div>
+        <p class="aviso">Triagem de pesquisa: não substitui o diagnóstico médico.</p>
       </article>
+
+      <div id="cartoes-noite" class="cartoes"></div>
 
       <article class="cartao">
         <header class="cartao-topo">
           <div>
             <h2>A noite, minuto a minuto</h2>
-            <p class="secundario">Cada marca colorida é uma pausa na respiração. A linha "Exame" mostra as pausas marcadas pela
-              polissonografia na mesma noite, para comparar com o monitor. Arraste sobre o gráfico para ampliar; dois cliques voltam ao todo.</p>
+            <p class="secundario">Cada marca é uma pausa na respiração. Arraste para ampliar; dois cliques voltam ao todo.</p>
           </div>
           <div class="chips" role="group" aria-label="Mostrar também no gráfico">
-            <label class="chip"><input type="checkbox" id="mostrar-fc"> Batimentos</label>
-            <label class="chip"><input type="checkbox" id="mostrar-fr"> Respiração</label>
-            <label class="chip" id="chip-psg"><input type="checkbox" id="mostrar-psg"> Exame de referência</label>
+            <label class="chip chip-coracao"><input type="checkbox" id="mostrar-fc"> Batimentos</label>
+            <label class="chip chip-respiracao"><input type="checkbox" id="mostrar-fr"> Respiração</label>
+            <label class="chip chip-exame" id="chip-psg"><input type="checkbox" id="mostrar-psg"> Exame de referência</label>
           </div>
         </header>
         <p id="leitura-noite" class="leitura"></p>
         <div id="graficos-noite" class="graficos"></div>
       </article>
 
-      <article id="cartao-validacao" class="cartao" hidden>
+      <article id="cartao-validacao" class="cartao validacao" hidden>
         <header class="cartao-topo">
           <div>
-            <h2>O monitor comparado ao exame de referência</h2>
-            <p class="secundario">As três noites de exemplo também foram registradas por polissonografia, o exame padrão para
-              diagnosticar apneia. A linha destacada é a noite aberta acima.</p>
+            <p class="sobretitulo">Validação</p>
+            <h2>O RespirAI comparado ao exame padrão</h2>
+            <p class="secundario">As três noites de exemplo também foram registradas por polissonografia, o exame de laboratório que
+              diagnostica apneia.</p>
           </div>
         </header>
+        <div id="validacao-visual" class="validacao-visual"></div>
         <p id="resumo-validacao" class="frase-validacao"></p>
-        <div class="rolagem-horizontal">
-          <table id="tabela-validacao">
-            <thead>
-              <tr>
-                <th scope="col">Noite</th>
-                <th scope="col" class="num">Monitor (eventos/h)</th>
-                <th scope="col" class="num">Exame (IAH)</th>
-                <th scope="col" class="num">Diferença</th>
-                <th scope="col">Classificação do monitor</th>
-                <th scope="col">Classificação do exame</th>
-                <th scope="col">Concordância</th>
-                <th scope="col" class="num">Eventos do exame encontrados</th>
-                <th scope="col" class="num">Eventos do monitor confirmados</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-        <p class="secundario nota">Um evento do monitor conta como coincidente quando se sobrepõe a um evento do exame; o fim do
-          evento do exame é estendido em 30 s porque a queda do oxigênio chega depois da pausa. "Encontrados" é a sensibilidade
-          por evento; "confirmados" é o valor preditivo positivo. O IAH do exame é dividido pelas horas de sono medidas pelo EEG,
-          e o índice do monitor pelas horas de registro válido, como nos testes domiciliares; por isso o monitor tende a dar um
-          índice um pouco menor.</p>
+        <details class="detalhes-inline">
+          <summary>Ver a tabela completa</summary>
+          <div class="rolagem-horizontal">
+            <table id="tabela-validacao">
+              <thead>
+                <tr>
+                  <th scope="col">Noite</th>
+                  <th scope="col" class="num">Monitor (eventos/h)</th>
+                  <th scope="col" class="num">Exame (IAH)</th>
+                  <th scope="col" class="num">Diferença</th>
+                  <th scope="col">Classificação do monitor</th>
+                  <th scope="col">Classificação do exame</th>
+                  <th scope="col">Concordância</th>
+                  <th scope="col" class="num">Eventos do exame encontrados</th>
+                  <th scope="col" class="num">Eventos do monitor confirmados</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="secundario nota">Um evento do monitor coincide quando se sobrepõe a um evento do exame; o fim do evento do exame é
+            estendido em 30 s porque a queda do oxigênio chega depois da pausa. "Encontrados" é a sensibilidade por evento;
+            "confirmados" é o valor preditivo positivo. O IAH do exame é dividido pelas horas de sono medidas pelo EEG, e o índice do
+            monitor pelas horas de registro válido, como nos testes domiciliares; por isso o monitor tende a dar um índice um pouco menor.</p>
+        </details>
       </article>
 
       <details class="cartao tecnico">
@@ -165,6 +183,7 @@
       </details>
     </section>
 
+    <!-- ===================== HISTÓRICO ===================== -->
     <section id="tela-historico" role="tabpanel" aria-labelledby="aba-historico" hidden>
       <div class="cabecalho-secao">
         <div>
@@ -180,8 +199,8 @@
         </label>
       </div>
       <p id="estado-historico" class="mensagem" role="status" hidden></p>
-      <p id="aviso-historico" class="comparacao aviso-historico" hidden>As três noites de exemplo são de pessoas diferentes, escolhidas para
-        mostrar uma noite de cada gravidade. Com o seu dispositivo, esta tela mostra a evolução das suas próprias noites.</p>
+      <p id="aviso-historico" class="comparacao-texto aviso-historico" hidden>As três noites de exemplo são de pessoas diferentes, uma de cada
+        gravidade. Com o seu dispositivo, esta tela mostra a evolução das suas próprias noites.</p>
 
       <div id="conteudo-historico" hidden>
         <div id="cartoes-historico" class="cartoes"></div>
@@ -191,9 +210,7 @@
           <header class="cartao-topo">
             <div>
               <h2>Eventos por hora em cada noite</h2>
-              <p class="secundario">A faixa colorida ao fundo mostra a gravidade; a linha tracejada é a média das noites com 4 h ou mais
-                de leitura. Barras mais claras tiveram menos de 4 h de leitura e um ponto no eixo marca noite sem leituras.
-                Clique em uma barra para abrir a noite.</p>
+              <p class="secundario">A cor da barra é a gravidade daquela noite; a linha tracejada é a média. Clique numa barra para abrir a noite.</p>
             </div>
           </header>
           <div id="grafico-tendencia" class="tendencia"></div>
@@ -206,11 +223,11 @@
               <p class="secundario">Quanto do sono a saturação passou abaixo de 90% em cada noite.</p>
             </div>
           </header>
-          <div id="grafico-t90" class="tendencia"></div>
+          <div id="grafico-t90" class="tendencia tendencia-oxigenio"></div>
         </article>
 
-        <article class="cartao">
-          <header class="cartao-topo"><div><h2>Todas as noites</h2></div></header>
+        <details class="cartao detalhes-cartao">
+          <summary><span class="titulo-detalhes">Todas as noites em tabela</span></summary>
           <div class="rolagem-horizontal">
             <table id="tabela-historico">
               <thead>
@@ -228,50 +245,143 @@
               <tbody></tbody>
             </table>
           </div>
+        </details>
+      </div>
+    </section>
+
+    <!-- ===================== AGORA ===================== -->
+    <section id="tela-vivo" role="tabpanel" aria-labelledby="aba-vivo" hidden>
+      <div id="estado-agora" class="estado-agora" role="status"></div>
+
+      <div id="cartoes-vivo" class="sinais-vivo"></div>
+      <div id="resumo-vivo" class="placar"></div>
+
+      <div id="controles-demo" class="controles">
+        <button id="tocar" class="botao botao-tocar" type="button">Reproduzir</button>
+        <div id="velocidades" class="segmentado" role="group" aria-label="Velocidade"></div>
+        <input id="posicao" type="range" min="0" max="0" value="0" step="1" aria-label="Posição na noite">
+        <span id="relogio" class="relogio">--:--</span>
+        <span class="selo-origem selo-simulacao">Simulação: reprodução de uma noite de exemplo</span>
+      </div>
+
+      <div class="grade-vivo">
+        <article class="cartao">
+          <header class="cartao-topo">
+            <div><h2>Últimos 10 minutos</h2></div>
+            <div class="chips" role="group" aria-label="Mostrar também no gráfico">
+              <label class="chip chip-coracao"><input type="checkbox" id="mostrar-fc-vivo"> Batimentos</label>
+            </div>
+          </header>
+          <p id="leitura-vivo" class="leitura"></p>
+          <div id="graficos-vivo" class="graficos"></div>
+        </article>
+
+        <article class="cartao">
+          <header class="cartao-topo"><div><h2>Últimas pausas</h2></div></header>
+          <ol id="feed" class="feed"></ol>
         </article>
       </div>
     </section>
 
-    <section id="tela-vivo" role="tabpanel" aria-labelledby="aba-vivo" hidden>
-      <div id="controles-demo" class="cartao controles">
-        <div>
-          <h2>Simulação ao vivo</h2>
-          <p class="secundario">Reproduz a noite de exemplo como se estivesse acontecendo agora.</p>
-        </div>
-        <div class="controles-linha">
-          <button id="tocar" class="botao" type="button">Reproduzir</button>
-          <div id="velocidades" class="segmentado" role="group" aria-label="Velocidade"></div>
-          <input id="posicao" type="range" min="0" max="0" value="0" step="1" aria-label="Posição na noite">
-          <span id="relogio" class="relogio">--:--</span>
-        </div>
+    <!-- ===================== COMO FUNCIONA ===================== -->
+    <section id="tela-como" role="tabpanel" aria-labelledby="aba-como" hidden>
+      <div class="como-intro">
+        <p class="sobretitulo">Como funciona</p>
+        <h2 class="titulo-grande">Do dedo à tela, <span class="gradiente">uma leitura por segundo</span></h2>
+        <p class="secundario">Apneia do sono são pausas na respiração durante o sono. Elas derrubam o oxigênio do sangue e
+          fragmentam o descanso, mas a maioria das pessoas com apneia não sabe que tem.</p>
       </div>
 
-      <div id="estado-agora" class="estado-agora" role="status"></div>
-      <div id="cartoes-vivo" class="cartoes cartoes-vivo"></div>
-      <p id="resumo-vivo" class="resumo-vivo"></p>
+      <ol class="fluxo" aria-label="Caminho dos dados">
+        <li class="no no-sensor">
+          <span class="no-icone" data-icone="sensor"></span>
+          <strong>Sensores</strong>
+          <span>MAX30102 no dedo mede oxigênio e batimentos; um piezo na cinta do peito vai medir a respiração <em class="tag">em integração</em></span>
+        </li>
+        <li class="elo" aria-hidden="true"><i></i><i></i><i></i><small>ESP-NOW</small></li>
+        <li class="no no-master">
+          <span class="no-icone" data-icone="chip"></span>
+          <strong>ESP32 no corpo</strong>
+          <span>Calcula BPM e SpO₂ e transmite por rádio, sem fio e sem roteador</span>
+        </li>
+        <li class="elo" aria-hidden="true"><i></i><i></i><i></i><small>rádio</small></li>
+        <li class="no no-gateway">
+          <span class="no-icone" data-icone="antena"></span>
+          <strong>ESP32 gateway</strong>
+          <span>Recebe, carimba a hora (NTP) e envia à nuvem pelo Wi-Fi</span>
+        </li>
+        <li class="elo" aria-hidden="true"><i></i><i></i><i></i><small>Wi-Fi</small></li>
+        <li class="no no-nuvem">
+          <span class="no-icone" data-icone="nuvem"></span>
+          <strong>Firebase</strong>
+          <span>Guarda as leituras da noite com segurança, por dispositivo</span>
+        </li>
+        <li class="elo" aria-hidden="true"><i></i><i></i><i></i><small>internet</small></li>
+        <li class="no no-tela">
+          <span class="no-icone" data-icone="tela"></span>
+          <strong>Este painel</strong>
+          <span>Detecta os eventos, calcula o índice por hora e classifica a noite</span>
+        </li>
+      </ol>
 
-      <article class="cartao">
-        <header class="cartao-topo">
-          <div><h2>Últimos 10 minutos</h2></div>
-          <div class="chips" role="group" aria-label="Mostrar também no gráfico">
-            <label class="chip"><input type="checkbox" id="mostrar-fc-vivo"> Batimentos</label>
-          </div>
-        </header>
-        <p id="leitura-vivo" class="leitura"></p>
-        <div id="graficos-vivo" class="graficos"></div>
-      </article>
+      <div class="passos">
+        <article class="passo passo-1">
+          <span class="passo-numero">1</span>
+          <h3>Detecta pausas</h3>
+          <p>Sem respirar por 10 segundos ou mais: <strong>apneia</strong>.</p>
+        </article>
+        <article class="passo passo-2">
+          <span class="passo-numero">2</span>
+          <h3>Vigia o oxigênio</h3>
+          <p>Queda de 3 pontos na SpO₂ sem pausa: <strong>hipopneia provável</strong>.</p>
+        </article>
+        <article class="passo passo-3">
+          <span class="passo-numero">3</span>
+          <h3>Conta por hora</h3>
+          <p>Eventos por hora de sono, classificados pelos cortes da medicina do sono (AASM).</p>
+        </article>
+      </div>
 
-      <article class="cartao">
-        <header class="cartao-topo"><div><h2>Últimas pausas na respiração</h2></div></header>
-        <ol id="feed" class="feed"></ol>
-      </article>
+      <div class="faixas-gravidade" aria-label="Classificação por eventos por hora">
+        <div style="--cor: var(--g-normal)"><b>Normal</b><span>menos de 5/h</span></div>
+        <div style="--cor: var(--g-leve)"><b>Leve</b><span>5 a 15/h</span></div>
+        <div style="--cor: var(--g-moderada)"><b>Moderada</b><span>15 a 30/h</span></div>
+        <div style="--cor: var(--g-grave)"><b>Grave</b><span>30 ou mais/h</span></div>
+      </div>
     </section>
   </main>
 
   <footer class="rodape">
     <p>Noites de exemplo: St. Vincent's University Hospital / University College Dublin Sleep Apnea Database, PhysioNet,
       doi:10.13026/C26C7D, licença ODC-By 1.0. Horários reais; datas anonimizadas pela base.</p>
-    <p>Protótipo de pesquisa (TCC). Não substitui a polissonografia nem a avaliação médica.</p>
+    <p>RespirAI · protótipo de pesquisa (TCC de Mecatrônica). Não substitui a polissonografia nem a avaliação médica.</p>
   </footer>
+
+  <!-- ===================== MODO FEIRA ===================== -->
+  <div id="feira-abertura" class="feira-abertura" hidden>
+    <div class="orbe" aria-hidden="true"><i></i><i></i><i></i></div>
+    <h2 class="feira-titulo"><span class="nome">Respir<b>AI</b></span></h2>
+    <p class="feira-sub">Um monitor de apneia do sono feito por estudantes de Mecatrônica.</p>
+    <p class="feira-fato">A apneia do sono faz a pessoa <strong>parar de respirar</strong> várias vezes por noite.
+      Quase <strong>1 bilhão</strong> de adultos no mundo têm apneia, e a maioria não sabe.</p>
+    <p class="feira-fonte">Estimativa: Benjafield et al., Lancet Respiratory Medicine, 2019.</p>
+  </div>
+
+  <div id="feira-barra" class="feira-barra" hidden>
+    <div class="feira-legenda">
+      <p id="feira-cena" class="feira-cena"></p>
+      <p id="feira-texto" class="feira-texto"></p>
+      <div id="feira-pontos" class="feira-pontos" aria-hidden="true"></div>
+    </div>
+    <div class="feira-qr">
+      <div id="feira-qr" class="qr" role="img" aria-label="QR code para abrir o painel no celular"></div>
+      <span>Abra no celular</span>
+    </div>
+    <div class="feira-controles">
+      <span id="feira-estado" class="feira-estado"></span>
+      <button id="feira-sair" class="botao botao-fantasma" type="button">Sair (Esc)</button>
+    </div>
+    <div class="feira-progresso"><i id="feira-progresso"></i></div>
+  </div>
 </body>
 </html>
