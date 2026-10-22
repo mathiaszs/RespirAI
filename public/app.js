@@ -2,6 +2,7 @@ import { calcularEscore, classificarGravidade, PADROES } from './escore-apneia.j
 import { criarGrupo, corDoTipo } from './graficos.js';
 import { carregarIndiceDemo, carregarNoiteDemo } from './fonte-demo.js';
 import { resumirNoite, datasDoPeriodo, buscarHistoricoDispositivo, desenharBarras } from './historico.js';
+import { criarModoFeira } from './modo-feira.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -53,10 +54,11 @@ const ESCALA = [
   ['grave', 30, 60],
 ];
 const TEMAS = [
-  ['auto', 'automático'],
-  ['light', 'claro'],
   ['dark', 'escuro'],
+  ['light', 'claro'],
+  ['auto', 'automático'],
 ];
+const SEM_MOVIMENTO = matchMedia('(prefers-reduced-motion: reduce)');
 const VELOCIDADES = [1, 10, 60, 300];
 const JANELA_VIVO_S = 600;
 
@@ -73,6 +75,22 @@ const ICONES = {
   auto: ['M10 2.5a7.5 7.5 0 1 1 0 15 7.5 7.5 0 0 1 0-15z', 'M10 2.5a7.5 7.5 0 0 0 0 15z'],
   baixar: ['M10 3v9.5', 'M6.2 8.8 10 12.6l3.8-3.8', 'M4 16h12'],
   tendencia: ['M3 15l4.5-4.5 3 3L17 7', 'M12.5 7H17v4.5'],
+  onda: ['M2 10.5h3.2l1.7-4.6 3 9.2 2.2-6.4 1.4 1.8H18'],
+  sensor: ['M2.5 10h3l1.5-4 3 8 2-5 1.2 1h4.3'],
+  chip: ['M6 6h8v8H6z', 'M8.5 3v3M11.5 3v3M8.5 14v3M11.5 14v3M3 8.5h3M3 11.5h3M14 8.5h3M14 11.5h3'],
+  antena: ['M10 11v7', 'M11.2 9.5a1.2 1.2 0 1 1-2.4 0 1.2 1.2 0 0 1 2.4 0z', 'M7 6.5a4.2 4.2 0 0 0 0 6', 'M13 6.5a4.2 4.2 0 0 1 0 6', 'M4.6 4.2a7.6 7.6 0 0 0 0 10.6', 'M15.4 4.2a7.6 7.6 0 0 1 0 10.6'],
+  nuvem: ['M6 15.5h8.5a3.5 3.5 0 0 0 .4-7 5 5 0 0 0-9.6 1.4A2.8 2.8 0 0 0 6 15.5z'],
+  tela: ['M3 4.5h14v9H3z', 'M7 17h6', 'M10 13.5V17', 'M5.5 10.5l2-2 2 1.5 3-3.5 2 1.5'],
+};
+
+// Ícones grandes e preenchidos dos sinais ao vivo (viewBox 24).
+const ICONES_SINAL = {
+  oxigenio: ['M12 2.5c3.6 4.3 6.3 7.8 6.3 11.2a6.3 6.3 0 0 1-12.6 0c0-3.4 2.7-6.9 6.3-11.2z'],
+  coracao: ['M12 21s-7.5-4.6-9.3-9.2C1.5 8.6 3.4 5 6.9 5c2 0 3.6 1.1 4.6 2.6l.5.8.5-.8C13.5 6.1 15.1 5 17.1 5c3.5 0 5.4 3.6 4.2 6.8C19.5 16.4 12 21 12 21z'],
+  respiracao: [
+    'M10.6 9.2C8.2 6.6 5.2 7.3 4.1 10.8c-1.1 3.6-.6 7.1 1.2 8.4 1.6 1.1 3.9.3 4.8-1.3.5-.9.5-2.2.5-3.5V9.2z',
+    'M13.4 9.2c2.4-2.6 5.4-1.9 6.5 1.6 1.1 3.6.6 7.1-1.2 8.4-1.6 1.1-3.9.3-4.8-1.3-.5-.9-.5-2.2-.5-3.5V9.2z',
+  ],
 };
 
 const estado = {
@@ -103,6 +121,8 @@ const estado = {
     grupo: null,
     mostrarFc: false,
     pararEscuta: null,
+    sinais: null, // elementos dos três sinais grandes, criados uma vez para as animações não recomeçarem
+    chaveFeed: '',
   },
 };
 
@@ -231,46 +251,132 @@ function selo(el, gravidade) {
   el.append(iconeEstado(g.icone, g.cor), g.titulo, detalhe);
 }
 
+// Posição de um índice na escala exibida, de 0 a 1: quatro faixas de mesma largura.
+function posicaoNaEscala(indice) {
+  for (const [i, [, de, ate]] of ESCALA.entries()) {
+    if (indice < ate || i === ESCALA.length - 1) return (i + Math.max(0, Math.min(1, (indice - de) / (ate - de)))) / ESCALA.length;
+  }
+  return 1;
+}
+
+function svgEl(tag, atributos = {}, pai) {
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(atributos)) e.setAttribute(k, String(v));
+  pai?.append(e);
+  return e;
+}
+
+// Medidor semicircular: quatro arcos (normal → grave) e um ponteiro que gira até o índice.
 function desenharEscala(el, indice, gravidade) {
   el.replaceChildren();
   if (indice === null) return;
-  const barra = document.createElement('div');
-  barra.className = 'escala-barra';
-  const rotulos = document.createElement('div');
-  rotulos.className = 'escala-rotulos';
-  const limites = document.createElement('div');
-  limites.className = 'escala-limites';
-  limites.setAttribute('aria-hidden', 'true');
-  let posicao = 100;
-  ESCALA.forEach(([nome, de, ate], i) => {
-    const zona = document.createElement('div');
-    zona.className = `zona${nome === gravidade ? ' atual' : ''}`;
-    zona.style.setProperty('--cor', `var(${GRAVIDADE[nome].cor})`);
-    barra.append(zona);
-    const rotulo = document.createElement('span');
-    rotulo.textContent = GRAVIDADE[nome].rotulo;
-    if (nome === gravidade) rotulo.className = 'atual';
-    rotulos.append(rotulo);
+  const cx = 150;
+  const cy = 150;
+  const r = 118;
+  const ponto = (graus, raio) => {
+    const a = (graus * Math.PI) / 180;
+    return [cx - raio * Math.cos(a), cy - raio * Math.sin(a)];
+  };
+  const svg = svgEl('svg', { viewBox: '0 0 300 172', 'aria-hidden': 'true' });
+  svgEl('path', { d: `M${ponto(0, r).join(' ')} A${r} ${r} 0 0 1 ${ponto(180, r).join(' ')}`, class: 'trilho', 'stroke-width': 26 }, svg);
+  const passo = 180 / ESCALA.length;
+  ESCALA.forEach(([nome, de], i) => {
+    const atual = nome === gravidade;
+    const a0 = i * passo + 1.6;
+    const a1 = (i + 1) * passo - 1.6;
+    const arco = svgEl('path', {
+      d: `M${ponto(a0, r).join(' ')} A${r} ${r} 0 0 1 ${ponto(a1, r).join(' ')}`,
+      class: `arco${atual ? ' atual' : ''}`,
+      'stroke-width': atual ? 24 : 18,
+    }, svg);
+    arco.style.stroke = `var(${GRAVIDADE[nome].cor})`;
+    arco.style.setProperty('--cor', `var(${GRAVIDADE[nome].cor})`);
+    const [tx, ty] = ponto((i + 0.5) * passo, r + 26);
+    const t = svgEl('text', { x: tx, y: ty, 'text-anchor': 'middle', 'dominant-baseline': 'middle', class: `rotulo-arco${atual ? ' atual' : ''}` }, svg);
+    t.textContent = GRAVIDADE[nome].rotulo;
     if (i) {
-      const limite = document.createElement('span');
-      limite.textContent = String(de);
-      limite.style.left = `${i * 25}%`;
-      limites.append(limite);
-    }
-    if (indice >= de && (indice < ate || i === ESCALA.length - 1)) {
-      posicao = (i + Math.min(1, (indice - de) / (ate - de))) * 25;
+      const [lx, ly] = ponto(i * passo, r - 30);
+      const l = svgEl('text', { x: lx, y: ly, 'text-anchor': 'middle', 'dominant-baseline': 'middle', class: 'limite' }, svg);
+      l.textContent = String(de);
     }
   });
-  const marcador = document.createElement('div');
-  marcador.className = 'marcador';
-  marcador.style.left = `${Math.max(1, Math.min(99, posicao))}%`;
-  el.append(limites, barra, marcador, rotulos);
+  const ponteiro = svgEl('g', { class: 'ponteiro' }, svg);
+  ponteiro.style.transformOrigin = `${cx}px ${cy}px`;
+  svgEl('line', { x1: cx, y1: cy, x2: cx - r + 34, y2: cy }, ponteiro);
+  svgEl('circle', { cx, cy, r: 11, class: 'centro' }, svg);
+  el.append(svg);
+  const graus = posicaoNaEscala(indice) * 180;
+  if (SEM_MOVIMENTO.matches) ponteiro.style.transform = `rotate(${graus}deg)`;
+  else requestAnimationFrame(() => requestAnimationFrame(() => (ponteiro.style.transform = `rotate(${graus}deg)`)));
   el.setAttribute('aria-label', `Escala de gravidade: ${fmt(indice)} eventos por hora, faixa ${GRAVIDADE[gravidade].rotulo.toLowerCase()}.`);
 }
 
-function metrica({ icone, titulo, valor, unidade, detalhe }) {
+// Número que "conta" até o valor final.
+function contar(el, valor, casas = 1) {
+  if (valor === null || valor === undefined || SEM_MOVIMENTO.matches) {
+    el.textContent = fmt(valor, casas);
+    return;
+  }
+  const inicio = performance.now();
+  const duracaoMs = 1100;
+  const passo = (agora) => {
+    const p = Math.min(1, (agora - inicio) / duracaoMs);
+    const suave = 1 - (1 - p) ** 3;
+    el.textContent = fmt(p < 1 ? Math.round(valor * suave * 10 ** casas) / 10 ** casas : valor, casas);
+    if (p < 1) requestAnimationFrame(passo);
+  };
+  requestAnimationFrame(passo);
+}
+
+// Régua com o resultado do monitor e o do exame de referência lado a lado.
+function desenharComparacao(el, indice, gravidade, referencia) {
+  el.replaceChildren();
+  const classeRef = classificarGravidade(referencia.iah);
+  const mesma = classeRef === gravidade;
+  const topo = document.createElement('div');
+  topo.className = 'comparacao-topo';
+  const titulo = document.createElement('strong');
+  titulo.textContent = 'Comparado ao exame de laboratório (polissonografia) da mesma noite';
+  const concorda = document.createElement('span');
+  concorda.className = `concorda${mesma ? '' : ' nao'}`;
+  concorda.append(iconeEstado(mesma ? 'ok' : 'alerta', mesma ? '--bom' : '--atencao'), mesma ? 'Mesma classificação' : 'Classificação diferente');
+  topo.append(titulo, concorda);
+
+  const regua = document.createElement('div');
+  regua.className = 'regua';
+  regua.setAttribute('aria-hidden', 'true');
+  const faixas = document.createElement('div');
+  faixas.className = 'regua-faixas';
+  for (const [nome] of ESCALA) {
+    const i = document.createElement('i');
+    i.style.setProperty('--cor', `var(${GRAVIDADE[nome].cor})`);
+    faixas.append(i);
+  }
+  const pino = (classe, rotulo, valor) => {
+    const p = document.createElement('span');
+    p.className = `pino ${classe}`;
+    const b = document.createElement('b');
+    b.textContent = fmt(valor);
+    const t = document.createElement('span');
+    t.append(rotulo, b);
+    p.append(t);
+    p.style.left = '0%';
+    requestAnimationFrame(() => requestAnimationFrame(() => (p.style.left = `${posicaoNaEscala(valor) * 100}%`)));
+    return p;
+  };
+  regua.append(faixas, pino('monitor', 'RespirAI', indice), pino('exame', 'Exame', referencia.iah));
+
+  const texto = document.createElement('p');
+  texto.className = 'visualmente-oculto';
+  texto.textContent =
+    `O exame encontrou ${fmt(referencia.iah)} eventos por hora (${GRAVIDADE[classeRef].titulo.toLowerCase()}); ` +
+    `o RespirAI, ${fmt(indice)} (${GRAVIDADE[gravidade].titulo.toLowerCase()}).`;
+  el.append(topo, regua, texto);
+}
+
+function metrica({ icone, titulo, valor, unidade, detalhe, classe }) {
   const el = document.createElement('div');
-  el.className = 'metrica';
+  el.className = `metrica ${classe ?? icone}`;
   const topo = document.createElement('div');
   topo.className = 'metrica-topo';
   const circulo = document.createElement('span');
@@ -338,18 +444,21 @@ function montarSeries(noite) {
 const SINAIS = {
   spo2: (s) => ({
     titulo: 'Oxigênio no sangue (SpO₂, %)',
+    cor: '--c-oxigenio',
     valores: s.spo2,
     altura: 170,
     faixaY: (min) => [Math.min(80, Math.floor(min / 5) * 5), 100],
   }),
   fc: (s) => ({
     titulo: 'Batimentos do coração (por minuto)',
+    cor: '--c-coracao',
     valores: s.fc,
     altura: 120,
     faixaY: (min, max) => [Math.floor((min - 5) / 10) * 10, Math.ceil((max + 5) / 10) * 10],
   }),
   fr: (s) => ({
     titulo: 'Respiração (por minuto)',
+    cor: '--c-respiracao',
     valores: s.fr,
     altura: 120,
     faixaY: (min, max) => [0, Math.max(30, Math.ceil(max / 10) * 10)],
@@ -420,8 +529,13 @@ function mostrarNoite(noite) {
   const inicio = noite.inicioEpochS + noite.amostras[0].t;
   const fim = noite.inicioEpochS + noite.amostras.at(-1).t;
   $('periodo').textContent = `${noite.rotulo} · das ${hora(inicio)} às ${hora(fim)}`;
-  $('ier').textContent = fmt(e.indiceEventos);
+  const g = GRAVIDADE[e.gravidade];
+  $('cartao-heroi').style.setProperty('--cor-g', g ? `var(${g.cor})` : 'var(--c-oxigenio)');
+  contar($('ier'), e.indiceEventos);
   selo($('gravidade'), e.gravidade);
+  const origem = $('selo-origem');
+  origem.hidden = !estado.origem;
+  origem.textContent = estado.origem?.demo ? 'Noite de exemplo · dados reais da base PhysioNet' : `Dispositivo ${estado.origem?.dispositivo ?? ''}`;
   desenharEscala($('escala'), e.indiceEventos, e.gravidade);
   $('frase').textContent = fraseResultado(e);
   $('orientacao').textContent = GRAVIDADE[e.gravidade]?.orientacao ?? '';
@@ -436,15 +550,8 @@ function mostrarNoite(noite) {
   );
 
   const comparacao = $('comparacao');
-  comparacao.hidden = !noite.referencia;
-  if (noite.referencia) {
-    const classeRef = classificarGravidade(noite.referencia.iah);
-    const mesma = classeRef === e.gravidade;
-    comparacao.textContent =
-      `Esta noite também foi registrada no exame de referência (polissonografia), que encontrou ${fmt(noite.referencia.iah)} ` +
-      `eventos por hora: ${GRAVIDADE[classeRef].titulo.toLowerCase()}. ` +
-      (mesma ? 'O monitor chegou à mesma classificação.' : `O monitor classificou como ${GRAVIDADE[e.gravidade].titulo.toLowerCase()}.`);
-  }
+  comparacao.hidden = !noite.referencia || e.indiceEventos === null;
+  if (!comparacao.hidden) desenharComparacao(comparacao, e.indiceEventos, e.gravidade, noite.referencia);
 
   const minutosBaixo = o.t90Pct === null ? null : (o.t90Pct / 100) * e.qualidade.horasValidas * 60;
   $('cartoes-noite').replaceChildren(
@@ -694,13 +801,57 @@ async function montarValidacao(indice) {
     corpo.append(tr);
   }
   $('tabela-validacao').tBodies[0].replaceChildren(corpo);
+  $('validacao-visual').replaceChildren(...linhas.map(parDeValidacao));
   $('cartao-validacao').hidden = estado.fonte !== 'demo';
   marcarNoiteNaValidacao();
 }
 
-// Destaca na tabela a noite que está aberta no resumo.
+// Um cartão por noite: barra do monitor, barra do exame e se a classificação bateu.
+function parDeValidacao(l) {
+  const el = document.createElement('div');
+  el.className = 'par';
+  el.dataset.id = l.id;
+  const g = GRAVIDADE[l.classeExame];
+  if (g) el.style.setProperty('--cor', `var(${g.cor})`);
+  const topo = document.createElement('div');
+  topo.className = 'par-topo';
+  const nome = document.createElement('span');
+  nome.textContent = l.nome;
+  const classe = document.createElement('span');
+  classe.className = 'par-classe';
+  classe.textContent = g?.rotulo ?? '—';
+  topo.append(nome, classe);
+  const linha = (tipo, rotulo, valor) => {
+    const div = document.createElement('div');
+    div.className = `par-linha ${tipo}`;
+    const t = document.createElement('span');
+    t.textContent = rotulo;
+    const barra = document.createElement('span');
+    barra.className = 'par-barra';
+    const i = document.createElement('i');
+    i.style.width = '0%';
+    requestAnimationFrame(() => requestAnimationFrame(() => (i.style.width = `${Math.min(100, (valor / 60) * 100)}%`)));
+    barra.append(i);
+    const b = document.createElement('b');
+    b.textContent = fmt(valor);
+    div.append(t, barra, b);
+    return div;
+  };
+  const igual = l.classeMonitor === l.classeExame;
+  const concorda = document.createElement('span');
+  concorda.className = `concorda${igual ? '' : ' nao'}`;
+  concorda.append(iconeEstado(igual ? 'ok' : 'alerta', igual ? '--bom' : '--atencao'), igual ? 'Mesma classificação' : 'Classificação diferente');
+  el.append(topo, linha('monitor', 'RespirAI', l.ier), linha('exame', 'Exame (IAH)', l.iah), concorda);
+  return el;
+}
+
+// Destaca na tabela e nos cartões a noite que está aberta no resumo.
 function marcarNoiteNaValidacao() {
   const atual = estado.fonte === 'demo' ? $('noite-demo').value : null;
+  for (const par of $('validacao-visual').children) {
+    if (par.dataset.id === atual) par.setAttribute('aria-current', 'true');
+    else par.removeAttribute('aria-current');
+  }
   for (const tr of $('tabela-validacao').tBodies[0].rows) {
     if (tr.dataset.id === atual) tr.setAttribute('aria-current', 'true');
     else tr.removeAttribute('aria-current');
@@ -773,6 +924,8 @@ function limparResumo(texto) {
   estado.grupoNoite = null;
   $('periodo').textContent = '';
   $('ier').textContent = '—';
+  $('selo-origem').hidden = true;
+  $('cartao-heroi').style.removeProperty('--cor-g');
   $('gravidade').replaceChildren();
   $('escala').replaceChildren();
   $('frase').textContent = texto;
@@ -940,6 +1093,7 @@ function mostrarHistorico(slots) {
   $('cartoes-historico').replaceChildren(
     metrica({
       icone: 'lua',
+      classe: 'noites',
       titulo: 'Noites gravadas',
       valor: fmt(comDados.length, 0),
       unidade: demo ? 'de exemplo' : `de ${slots.length}`,
@@ -994,6 +1148,7 @@ function mostrarHistorico(slots) {
     desenharBarras($('grafico-tendencia'), {
       slots,
       valor: (r) => r.ier,
+      corBarra: (r) => (GRAVIDADE[r.gravidade] ? `var(${GRAVIDADE[r.gravidade].cor})` : null),
       faixas,
       media,
       altura: 260,
@@ -1067,19 +1222,97 @@ function definirDadosVivo(dados) {
 function situacaoAgora(d, s, fim, tAtual, demo) {
   if (!demo) {
     const atraso = Math.round((Date.now() - d.ultimaLeituraMs) / 1000);
-    if (atraso > 15) return { icone: 'alerta', cor: '--atencao', texto: 'Sem novas leituras', detalhe: `Última há ${atraso} s. O dispositivo está ligado?` };
+    if (atraso > 15) return { estado: 'sem-sinal', icone: 'alerta', cor: '--atencao', texto: 'Sem novas leituras', detalhe: `Última há ${atraso} s. O dispositivo está ligado?` };
   }
   const spo2 = ultimoValido(s.spo2, fim, fim - 10);
-  if (spo2 === null) return { icone: 'alerta', cor: '--atencao', texto: 'Sem leitura de oxigênio', detalhe: 'O sensor pode ter saído do dedo.' };
+  if (spo2 === null) return { estado: 'sem-sinal', icone: 'alerta', cor: '--atencao', texto: 'Sem leitura de oxigênio', detalhe: 'O sensor pode ter saído do dedo.' };
   if (d.respiracoes) {
     const i = ultimoAte(d.respiracoes, tAtual);
     const pausa = i >= 0 ? tAtual - d.respiracoes[i] : null;
     if (pausa !== null && pausa >= PADROES.pausaMinimaS && pausa <= PADROES.pausaMaximaS) {
-      return { icone: 'alerta', cor: '--serio', texto: 'Pausa na respiração', detalhe: `há ${fmt(pausa, 0)} s` };
+      return { estado: 'pausa', icone: 'critico', cor: '--serie-2', texto: 'Pausa na respiração', detalhe: 'sem respirar há', contador: `${fmt(pausa, 0)} s` };
     }
   }
-  if (spo2 < 90) return { icone: 'alerta', cor: '--atencao', texto: 'Oxigênio baixo', detalhe: `${fmt(spo2)}%` };
-  return { icone: 'ok', cor: '--bom', texto: 'Respirando normalmente', detalhe: '' };
+  if (spo2 < 90) return { estado: 'baixo', icone: 'alerta', cor: '--atencao', texto: 'Oxigênio baixo', detalhe: `${fmt(spo2)}%` };
+  return { estado: 'ok', icone: 'ok', cor: '--bom', texto: 'Respirando normalmente', detalhe: '' };
+}
+
+function svgSinal(nome) {
+  const el = svgEl('svg', { viewBox: '0 0 24 24', 'aria-hidden': 'true', fill: 'currentColor', stroke: 'currentColor', 'stroke-width': '1.2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' });
+  for (const d of ICONES_SINAL[nome]) svgEl('path', { d }, el);
+  if (nome === 'respiracao') svgEl('path', { d: 'M12 3v8.2M12 11.2l-1.6 1.7M12 11.2l1.6 1.7', fill: 'none', 'stroke-width': '1.8' }, el);
+  return el;
+}
+
+// Os três sinais grandes são criados uma vez; depois só valores, classes e o ritmo das animações mudam.
+function criarSinaisVivo() {
+  const sinais = {};
+  const nomes = [
+    ['oxigenio', 'Oxigênio no sangue', '%'],
+    ['coracao', 'Batimentos', 'bpm'],
+    ['respiracao', 'Respiração', 'por min'],
+  ];
+  $('cartoes-vivo').replaceChildren(
+    ...nomes.map(([chave, titulo, unidade]) => {
+      const el = document.createElement('div');
+      el.className = `sinal ${chave}`;
+      const topo = document.createElement('div');
+      topo.className = 'sinal-topo';
+      const nome = document.createElement('span');
+      nome.className = 'sinal-nome';
+      nome.textContent = titulo;
+      const icone = document.createElement('span');
+      icone.className = 'sinal-icone';
+      icone.append(svgSinal(chave));
+      topo.append(nome, icone);
+      const valor = document.createElement('p');
+      valor.className = 'sinal-valor';
+      const numero = document.createElement('span');
+      const u = document.createElement('small');
+      u.textContent = unidade;
+      valor.append(numero, u);
+      const detalhe = document.createElement('p');
+      detalhe.className = 'sinal-detalhe';
+      const faisca = svgEl('svg', { class: 'faisca', viewBox: '0 0 120 40', preserveAspectRatio: 'none', 'aria-hidden': 'true' });
+      const area = svgEl('path', { class: 'area' }, faisca);
+      const linha = svgEl('path', { class: 'linha' }, faisca);
+      el.append(topo, valor, detalhe, faisca);
+      sinais[chave] = { el, numero, detalhe, area, linha };
+      return el;
+    }),
+  );
+  return sinais;
+}
+
+// Mini gráfico dos últimos 2 minutos de um sinal.
+function desenharFaisca(sinal, valores) {
+  const pontos = valores.map((v, i) => [i, v]).filter(([, v]) => v !== null);
+  if (pontos.length < 2) {
+    sinal.linha.setAttribute('d', '');
+    sinal.area.setAttribute('d', '');
+    return;
+  }
+  const vs = pontos.map(([, v]) => v);
+  let min = Math.min(...vs);
+  let max = Math.max(...vs);
+  if (max - min < 4) {
+    const meio = (max + min) / 2;
+    min = meio - 2;
+    max = meio + 2;
+  }
+  const n = Math.max(1, valores.length - 1);
+  const xy = pontos.map(([i, v]) => [(i / n) * 120, 36 - ((v - min) / (max - min)) * 32]);
+  const d = xy.map(([x, y], k) => `${k ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join('');
+  sinal.linha.setAttribute('d', d);
+  sinal.area.setAttribute('d', `${d}L${xy.at(-1)[0].toFixed(1)} 40L${xy[0][0].toFixed(1)} 40Z`);
+}
+
+function atualizarSinal(sinal, valor, { detalhe = '', periodo = null, parado = false } = {}) {
+  sinal.numero.textContent = fmt(valor, 0);
+  sinal.detalhe.textContent = detalhe;
+  sinal.el.classList.toggle('sem-valor', valor === null);
+  sinal.el.classList.toggle('parado', parado);
+  if (periodo) sinal.el.style.setProperty('--periodo', `${periodo.toFixed(2)}s`);
 }
 
 function desenharVivo() {
@@ -1089,8 +1322,10 @@ function desenharVivo() {
   if (!d) {
     $('estado-agora').replaceChildren();
     $('cartoes-vivo').replaceChildren();
-    $('resumo-vivo').textContent = '';
+    v.sinais = null;
+    $('resumo-vivo').replaceChildren();
     $('feed').replaceChildren();
+    v.chaveFeed = '';
     $('leitura-vivo').textContent = '';
     return;
   }
@@ -1111,12 +1346,21 @@ function desenharVivo() {
   const e = v.escore;
 
   const sit = situacaoAgora(d, s, fim, tAtual, demo);
+  const banner = $('estado-agora');
+  if (banner.dataset.estado !== sit.estado) banner.dataset.estado = sit.estado;
   const textoSit = document.createElement('span');
   textoSit.textContent = sit.texto;
   const detalheSit = document.createElement('span');
   detalheSit.className = 'detalhe';
   detalheSit.textContent = sit.detalhe;
-  $('estado-agora').replaceChildren(iconeEstado(sit.icone, sit.cor), textoSit, detalheSit);
+  const partes = [iconeEstado(sit.icone, sit.cor), textoSit, detalheSit];
+  if (sit.contador) {
+    const contador = document.createElement('span');
+    contador.className = 'contador';
+    contador.textContent = sit.contador;
+    partes.push(contador);
+  }
+  banner.replaceChildren(...partes);
 
   let frMinuto = null;
   if (d.respiracoes && tAtual - d.amostras[0].t >= 60) {
@@ -1124,15 +1368,38 @@ function desenharVivo() {
   } else if (!d.respiracoes) {
     frMinuto = ultimoValido(s.fr, fim, ini);
   }
-  $('cartoes-vivo').replaceChildren(
-    metrica({ icone: 'oxigenio', titulo: 'Oxigênio', valor: fmt(ultimoValido(s.spo2, fim, fim - 10), 0), unidade: '%' }),
-    metrica({ icone: 'coracao', titulo: 'Batimentos', valor: fmt(ultimoValido(s.fc, fim, fim - 10), 0), unidade: '/min' }),
-    metrica({ icone: 'respiracao', titulo: 'Respiração', valor: fmt(frMinuto, 0), unidade: '/min', detalhe: 'no último minuto' }),
-  );
-  $('resumo-vivo').textContent = e
-    ? `Esta noite até agora: ${fmt(e.eventos.length, 0)} ${e.eventos.length === 1 ? 'pausa' : 'pausas'}` +
-      `${e.indiceEventos === null ? '' : `, em média ${fmt(Math.round(e.indiceEventos), 0)} por hora (${GRAVIDADE[e.gravidade]?.titulo.toLowerCase() ?? '—'}; resultado parcial)`}.`
-    : '';
+  v.sinais ??= criarSinaisVivo();
+  const de = Math.max(0, fim - 119);
+  const spo2Agora = ultimoValido(s.spo2, fim, fim - 10);
+  const fcAgora = ultimoValido(s.fc, fim, fim - 10);
+  atualizarSinal(v.sinais.oxigenio, spo2Agora, { detalhe: spo2Agora !== null && spo2Agora < 90 ? 'abaixo de 90%' : 'normal: 95% ou mais' });
+  atualizarSinal(v.sinais.coracao, fcAgora, { detalhe: 'batimentos por minuto', periodo: fcAgora ? 60 / fcAgora : null });
+  atualizarSinal(v.sinais.respiracao, frMinuto, {
+    detalhe: sit.estado === 'pausa' ? 'respiração parada' : 'respirações no último minuto',
+    periodo: frMinuto ? Math.min(10, Math.max(1.5, 60 / frMinuto)) : null,
+    parado: sit.estado === 'pausa',
+  });
+  desenharFaisca(v.sinais.oxigenio, s.spo2.slice(de, fim + 1));
+  desenharFaisca(v.sinais.coracao, s.fc.slice(de, fim + 1));
+  desenharFaisca(v.sinais.respiracao, s.fr.slice(de, fim + 1));
+
+  const placar = [];
+  const item = (valor, texto, classe = '') => {
+    const span = document.createElement('span');
+    span.className = `item ${classe}`;
+    const b = document.createElement('b');
+    b.textContent = valor;
+    span.append(b, texto);
+    placar.push(span);
+  };
+  if (e) {
+    item(fmt(e.eventos.length, 0), e.eventos.length === 1 ? 'pausa esta noite' : 'pausas esta noite');
+    if (e.indiceEventos !== null) {
+      item(fmt(Math.round(e.indiceEventos), 0), `por hora · ${GRAVIDADE[e.gravidade]?.rotulo.toLowerCase() ?? '—'} (parcial)`, 'parcial');
+    }
+    item(duracao((tAtual - d.amostras[0].t) / 60), 'de gravação');
+  }
+  $('resumo-vivo').replaceChildren(...placar);
 
   $('relogio').textContent = hora(d.inicioEpochS + tAtual, true);
   if (demo) $('posicao').value = String(Math.round(v.posicao));
@@ -1164,7 +1431,11 @@ function desenharVivo() {
     v.grupo.atualizar(janela.x, valores, v.faixas);
   }
 
+  // O feed só é refeito quando muda, para a animação de entrada valer só para a pausa nova.
   const recentes = (e?.eventos ?? []).slice(-8).reverse();
+  const chave = `${d.inicioEpochS}:${recentes.map((ev) => ev.inicio).join(',')}`;
+  if (chave === v.chaveFeed) return;
+  v.chaveFeed = chave;
   if (!recentes.length) {
     const li = document.createElement('li');
     li.className = 'vazio';
@@ -1236,6 +1507,7 @@ function pararVivoFirebase() {
 function ajustarSeletor() {
   const historico = estado.aba === 'historico';
   const demo = estado.fonte === 'demo';
+  document.querySelector('.seletor').hidden = estado.aba === 'como';
   $('campo-demo').hidden = !demo || historico;
   $('campo-data').hidden = historico;
   $('carregar').hidden = historico;
@@ -1244,7 +1516,7 @@ function ajustarSeletor() {
 
 function trocarAba(aba) {
   estado.aba = aba;
-  for (const [nome, tela] of [['noite', 'tela-noite'], ['vivo', 'tela-vivo'], ['historico', 'tela-historico']]) {
+  for (const [nome, tela] of [['noite', 'tela-noite'], ['vivo', 'tela-vivo'], ['historico', 'tela-historico'], ['como', 'tela-como']]) {
     $(`aba-${nome}`).setAttribute('aria-selected', String(nome === aba));
     $(tela).hidden = nome !== aba;
   }
@@ -1257,6 +1529,9 @@ function trocarAba(aba) {
     tocar(false);
     pararVivoFirebase();
     carregarHistorico();
+  } else if (aba === 'como') {
+    tocar(false);
+    pararVivoFirebase();
   } else if (estado.fonte === 'demo') {
     if (estado.vivo.dados !== estado.noite) definirDadosVivo(estado.noite);
     else desenharVivo();
@@ -1365,12 +1640,44 @@ function redesenharTudo() {
   if (estado.noite) preencherTabelaEventos(estado.noite, estado.escore);
 }
 
+// O que o Modo Feira pode comandar no painel.
+let avisarDemoPronto;
+const demoPronto = new Promise((ok) => (avisarDemoPronto = ok));
+const feira = criarModoFeira({
+  indiceDemo: () => estado.indiceDemo,
+  trocarAba,
+  tocar,
+  escolherVelocidade,
+  async garantirDemo() {
+    await demoPronto;
+    if (estado.fonte !== 'demo') {
+      $('fonte').value = 'demo';
+      await trocarFonte('demo');
+    }
+  },
+  async selecionarDemo(id) {
+    if ($('noite-demo').value === id && estado.origem?.demo === id) return;
+    $('noite-demo').value = id;
+    await carregarDemo(id);
+  },
+  // Começa 3 s antes da pausa (apneia) mais longa da noite: em tempo real, o aviso aparece com o contador correndo.
+  irParaTrechoComEventos() {
+    const v = estado.vivo;
+    const apneias = (estado.escore?.eventos ?? []).filter((ev) => ev.tipo === 'apneia' && ev.inicio > 300);
+    const alvo = apneias.reduce((a, b) => (!a || b.duracaoS > a.duracaoS ? b : a), null);
+    v.posicao = alvo ? Math.max(0, alvo.inicio - 3) : 0;
+    v.ultimoCalculo = 0;
+    desenharVivo();
+  },
+});
+
 async function iniciar() {
-  $('logo').append(svg('lua', 22));
+  $('logo').append(svg('onda', 28));
+  for (const el of document.querySelectorAll('[data-icone]')) el.append(svg(el.dataset.icone, 26));
   $('baixar-pdf').prepend(svg('baixar', 18));
   $('baixar-pdf').addEventListener('click', baixarRelatorio);
-  let tema = lembrar('tema') ?? 'auto';
-  if (!TEMAS.some(([t]) => t === tema)) tema = 'auto';
+  let tema = lembrar('tema') ?? 'dark';
+  if (!TEMAS.some(([t]) => t === tema)) tema = 'dark';
   aplicarTema(tema);
   $('tema').addEventListener('click', () => {
     const atual = document.documentElement.getAttribute('data-theme') ?? 'auto';
@@ -1384,6 +1691,9 @@ async function iniciar() {
   $('aba-noite').addEventListener('click', () => trocarAba('noite'));
   $('aba-vivo').addEventListener('click', () => trocarAba('vivo'));
   $('aba-historico').addEventListener('click', () => trocarAba('historico'));
+  $('aba-como').addEventListener('click', () => trocarAba('como'));
+  $('botao-feira').addEventListener('click', () => feira.entrar({ telaCheia: true }));
+  if (new URLSearchParams(location.search).has('feira')) feira.entrar();
   $('periodo-historico').addEventListener('change', carregarHistorico);
   $('dispositivo').addEventListener('change', () => {
     if (estado.aba === 'historico') carregarHistorico();
@@ -1467,6 +1777,7 @@ async function iniciar() {
   } catch (erro) {
     mensagem(erro.message);
   }
+  avisarDemoPronto();
 }
 
 iniciar();

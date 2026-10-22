@@ -114,7 +114,8 @@ function caminhoBarra(x, y, largura, base) {
 
 // slots: [{ rotulo, titulo, resumo | null }]; valor(resumo) devolve o número da barra (ou null).
 // faixas: [{ de, ate, rotulo, cor }] desenhadas ao fundo (opcional). media: linha tracejada (opcional).
-export function desenharBarras(container, { slots, valor, faixas, media, rotuloMedia, altura, formatar, dica, aoEscolher }) {
+// corBarra(resumo): cor CSS opcional de cada barra (por exemplo, a cor da gravidade da noite).
+export function desenharBarras(container, { slots, valor, corBarra, faixas, media, rotuloMedia, altura, formatar, dica, aoEscolher }) {
   const dicaEl = document.createElement('div');
   dicaEl.className = 'dica-grafico';
   dicaEl.hidden = true;
@@ -169,7 +170,9 @@ export function desenharBarras(container, { slots, valor, faixas, media, rotuloM
         el('circle', { cx, cy: base - 3, r: 2.5, class: 'sem-dados' }, svg);
       } else {
         const y = Math.min(py(v), base - 1);
-        el('path', { d: caminhoBarra(cx - larguraBarra / 2, y, larguraBarra, base), class: s.resumo.suficiente ? 'barra' : 'barra fraca' }, svg);
+        const barra = el('path', { d: caminhoBarra(cx - larguraBarra / 2, y, larguraBarra, base), class: s.resumo.suficiente ? 'barra' : 'barra fraca' }, svg);
+        const cor = corBarra?.(s.resumo);
+        if (cor) barra.style.setProperty('--cor-barra', cor);
         if (comRotulos) {
           const t = el('text', { x: cx, y: y - 5, class: 'rotulo-valor', 'text-anchor': 'middle' }, svg);
           t.textContent = formatar(v);

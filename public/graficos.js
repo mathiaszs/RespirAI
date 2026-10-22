@@ -3,21 +3,31 @@
 
 const uPlot = window.uPlot;
 const LARGURA_EIXO_Y = 56;
-const FONTE = '12px system-ui, -apple-system, "Segoe UI", sans-serif';
+const FONTE = '12px "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif';
 let contadorGrupos = 0;
 
 function cores() {
   const css = getComputedStyle(document.documentElement);
   const v = (nome) => css.getPropertyValue(nome).trim();
   return {
+    v,
     linha: v('--serie-1'),
     apneia: v('--serie-2'),
     hipopneia: v('--serie-3'),
     texto: v('--texto-mudo'),
     grade: v('--grade'),
     eixo: v('--eixo'),
-    superficie: v('--superficie'),
+    superficie: v('--solida'),
   };
+}
+
+// Cor com transparência, para o degradê sob a linha (aceita #rgb e #rrggbb).
+function comAlfa(cor, alfa) {
+  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(cor);
+  if (!m) return cor;
+  const h = m[1].length === 3 ? [...m[1]].map((x) => x + x).join('') : m[1];
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+  return `rgba(${r}, ${g}, ${b}, ${alfa})`;
 }
 
 export function corDoTipo(tipo) {
@@ -75,11 +85,17 @@ export function criarGrupo(container, { x, faixas, sinais, zoom = true, aoMoverC
   };
   const cursorBase = { sync: { key: chaveSync }, y: false, drag: { x: zoom, y: false, setScale: zoom } };
 
-  function bloco(titulo, legenda) {
+  function bloco(titulo, legenda, cor) {
     const el = document.createElement('div');
     el.className = 'grafico';
     const h = document.createElement('h3');
-    h.textContent = titulo;
+    if (cor) {
+      const bolinha = document.createElement('span');
+      bolinha.className = 'bolinha';
+      bolinha.style.setProperty('--cor', cor);
+      h.append(bolinha);
+    }
+    h.append(titulo);
     if (legenda) h.append(legenda);
     const area = document.createElement('div');
     area.setAttribute('role', 'img');
@@ -144,20 +160,27 @@ export function criarGrupo(container, { x, faixas, sinais, zoom = true, aoMoverC
   }
 
   sinais.forEach((s, i) => {
-    const area = bloco(s.titulo);
+    const corLinha = (s.cor && c.v(s.cor)) || c.linha;
+    const area = bloco(s.titulo, null, corLinha);
     const ultimo = i === sinais.length - 1;
+    const degrade = (u) => {
+      const g = u.ctx.createLinearGradient(0, u.bbox.top, 0, u.bbox.top + u.bbox.height);
+      g.addColorStop(0, comAlfa(corLinha, 0.32));
+      g.addColorStop(1, comAlfa(corLinha, 0));
+      return g;
+    };
     graficos.push(
       new uPlot(
         {
           width: container.clientWidth,
           height: (s.altura ?? 130) + (ultimo ? 30 : 6),
           legend: { show: false },
-          cursor: { ...cursorBase, points: { size: 8, width: 2, stroke: c.superficie, fill: c.linha } },
+          cursor: { ...cursorBase, points: { size: 9, width: 2, stroke: c.superficie, fill: corLinha } },
           scales: {
             x: escalaX,
             y: { range: (u, min, max) => (min === null ? [0, 1] : (s.faixaY?.(min, max) ?? [min, max])) },
           },
-          series: [{}, { label: s.titulo, stroke: c.linha, width: 2, spanGaps: false, points: { show: false } }],
+          series: [{}, { label: s.titulo, stroke: corLinha, fill: degrade, width: 2, spanGaps: false, points: { show: false } }],
           axes: [eixoX(c, ultimo), eixoY(c)],
           hooks: ganchosComuns,
         },
