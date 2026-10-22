@@ -57,7 +57,7 @@ O modo **Firebase** exige internet (o SDK é carregado de `gstatic.com`) e um lo
 
 ## Modo demonstração
 
-O modo demo funciona **sem internet, sem login e sem dispositivo**. Ele carrega noites reais de polissonografia da
+O modo demo funciona **sem login e sem dispositivo**. Ainda precisa de internet para carregar as bibliotecas de gráficos (uPlot) e de PDF (jsPDF), que vêm de CDN. Ele carrega noites reais de polissonografia da
 base pública *St. Vincent's University Hospital / University College Dublin Sleep Apnea Database* (PhysioNet),
 guardadas em `public/demo/*.json`:
 
