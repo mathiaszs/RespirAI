@@ -23,6 +23,12 @@
         <p class="tagline">Seu sono, respiração por respiração</p>
       </div>
     </div>
+    <nav class="abas" role="tablist" aria-label="Telas">
+      <button class="aba" role="tab" id="aba-noite" aria-selected="true" aria-controls="tela-noite" type="button">Resumo da noite</button>
+      <button class="aba" role="tab" id="aba-vivo" aria-selected="false" aria-controls="tela-vivo" type="button"><span class="ponto-vivo" aria-hidden="true"></span>Agora</button>
+      <button class="aba" role="tab" id="aba-historico" aria-selected="false" aria-controls="tela-historico" type="button">Histórico</button>
+      <button class="aba" role="tab" id="aba-como" aria-selected="false" aria-controls="tela-como" type="button">Como funciona</button>
+    </nav>
     <div class="acoes-topo">
       <label class="compacto seletor-fonte">
         <span class="visualmente-oculto">Dados</span>
@@ -39,13 +45,6 @@
   </header>
 
   <main>
-    <nav class="abas" role="tablist" aria-label="Telas">
-      <button class="aba" role="tab" id="aba-noite" aria-selected="true" aria-controls="tela-noite" type="button">Resumo da noite</button>
-      <button class="aba" role="tab" id="aba-vivo" aria-selected="false" aria-controls="tela-vivo" type="button"><span class="ponto-vivo" aria-hidden="true"></span>Agora</button>
-      <button class="aba" role="tab" id="aba-historico" aria-selected="false" aria-controls="tela-historico" type="button">Histórico</button>
-      <button class="aba" role="tab" id="aba-como" aria-selected="false" aria-controls="tela-como" type="button">Como funciona</button>
-    </nav>
-
     <div class="seletor">
       <label id="campo-demo">Noite de exemplo
         <select id="noite-demo"></select>
@@ -94,11 +93,13 @@
             <p id="frase" class="frase"></p>
             <p id="orientacao" class="orientacao"></p>
           </div>
+          <div id="comparacao" class="comparacao" hidden></div>
         </div>
 
-        <ul id="avisos" class="avisos"></ul>
-        <div id="comparacao" class="comparacao" hidden></div>
-        <p class="aviso">Triagem de pesquisa: não substitui o diagnóstico médico.</p>
+        <div class="heroi-rodape">
+          <ul id="avisos" class="avisos"></ul>
+          <p class="aviso">Triagem de pesquisa: não substitui o diagnóstico médico.</p>
+        </div>
       </article>
 
       <div id="cartoes-noite" class="cartoes"></div>
