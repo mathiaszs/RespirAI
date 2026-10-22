@@ -1704,8 +1704,16 @@ async function iniciar() {
   $('botao-feira').addEventListener('click', () => feira.entrar({ telaCheia: true }));
   if (new URLSearchParams(location.search).has('feira')) feira.entrar();
   $('periodo-historico').addEventListener('change', carregarHistorico);
+  // Trocar o ID do dispositivo troca também a escuta ao vivo; senão a aba Agora seguiria mostrando o ID anterior.
   $('dispositivo').addEventListener('change', () => {
+    const dispositivo = $('dispositivo').value.trim();
+    if (dispositivo) guardar('dispositivo', dispositivo);
     if (estado.aba === 'historico') carregarHistorico();
+    if (estado.aba === 'vivo' && estado.fonte === 'firebase') {
+      pararVivoFirebase();
+      definirDadosVivo(null);
+      iniciarVivoFirebase();
+    }
   });
   $('fonte').addEventListener('change', (ev) => trocarFonte(ev.target.value));
   $('noite-demo').addEventListener('change', (ev) => carregarDemo(ev.target.value));
