@@ -1243,6 +1243,9 @@ function situacaoAgora(d, s, fim, tAtual, demo) {
     }
   }
   if (spo2 < 90) return { estado: 'baixo', icone: 'alerta', cor: '--atencao', texto: 'Oxigênio baixo', detalhe: `${fmt(spo2)}%` };
+  // Sem sensor de respiração não dá para afirmar que a pessoa está respirando normalmente.
+  const semRespiracao = !d.respiracoes && ultimoValido(s.fr, fim, fim - 60) === null;
+  if (semRespiracao) return { estado: 'ok', icone: 'ok', cor: '--bom', texto: 'Oxigênio normal', detalhe: 'respiração ainda não medida' };
   return { estado: 'ok', icone: 'ok', cor: '--bom', texto: 'Respirando normalmente', detalhe: '' };
 }
 
