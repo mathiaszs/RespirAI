@@ -35,7 +35,7 @@ O formato de dados esperado pelo dashboard, o que o firmware envia hoje e as lac
 ```
 public/                  Dashboard (JavaScript puro, sem build), publicado no Firebase Hosting
   index.html, estilo.css
-  app.js                 Interface e lógica das telas (Noite, Agora, Histórico, Como funciona)
+  app.js                 Interface e lógica das telas (Resumo, Agora, Análise, Histórico, Como funciona)
   modo-feira.js          Apresentação automática para feiras
   escore-apneia.js       Cálculo do índice de eventos/hora e da gravidade
   fonte-firebase.js      Leitura do Realtime Database + login

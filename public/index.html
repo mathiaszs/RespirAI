@@ -26,6 +26,7 @@
     <nav class="abas" role="tablist" aria-label="Telas">
       <button class="aba" role="tab" id="aba-noite" aria-selected="true" aria-controls="tela-noite" type="button">Resumo da noite</button>
       <button class="aba" role="tab" id="aba-vivo" aria-selected="false" aria-controls="tela-vivo" type="button"><span class="ponto-vivo" aria-hidden="true"></span>Agora</button>
+      <button class="aba" role="tab" id="aba-analise" aria-selected="false" aria-controls="tela-analise" type="button">Análise</button>
       <button class="aba" role="tab" id="aba-historico" aria-selected="false" aria-controls="tela-historico" type="button">Histórico</button>
       <button class="aba" role="tab" id="aba-como" aria-selected="false" aria-controls="tela-como" type="button">Como funciona</button>
     </nav>
@@ -99,11 +100,16 @@
         <div class="heroi-rodape">
           <ul id="avisos" class="avisos"></ul>
           <p class="aviso">Triagem de pesquisa: não substitui o diagnóstico médico.</p>
+          <button id="ir-analise" class="link-analise" type="button">Ver a noite minuto a minuto e a validação →</button>
         </div>
       </article>
 
       <div id="cartoes-noite" class="cartoes"></div>
+    </section>
 
+    <!-- ===================== ANÁLISE ===================== -->
+    <section id="tela-analise" role="tabpanel" aria-labelledby="aba-analise" hidden>
+      <p id="periodo-analise" class="periodo-analise secundario"></p>
       <article class="cartao">
         <header class="cartao-topo">
           <div>
