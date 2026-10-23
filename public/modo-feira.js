@@ -67,7 +67,7 @@ export function criarModoFeira(api) {
       texto: 'As noites de exemplo também passaram pela polissonografia, o exame padrão. O RespirAI chegou à mesma classificação.',
       duracao: 15_000,
       entrar() {
-        api.trocarAba('noite');
+        api.trocarAba('analise');
         rolarPara($('cartao-validacao'));
       },
     },

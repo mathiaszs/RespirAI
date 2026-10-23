@@ -364,7 +364,7 @@ function desenharComparacao(el, indice, gravidade, referencia) {
   const numeros = document.createElement('div');
   numeros.className = 'comparacao-numeros';
   numeros.setAttribute('aria-hidden', 'true');
-  for (const [classe, rotulo, valor] of [['monitor', 'RespirAI', indice], ['exame', 'Exame', referencia.iah]]) {
+  for (const [classe, rotulo, valor] of [['monitor', 'RespirAI', indice], ['exame', 'Polissonografia', referencia.iah]]) {
     const item = document.createElement('div');
     item.className = classe;
     const t = document.createElement('span');
@@ -538,6 +538,7 @@ function mostrarNoite(noite) {
   const inicio = noite.inicioEpochS + noite.amostras[0].t;
   const fim = noite.inicioEpochS + noite.amostras.at(-1).t;
   $('periodo').textContent = `${noite.rotulo} · das ${hora(inicio)} às ${hora(fim)}`;
+  $('periodo-analise').textContent = $('periodo').textContent;
   const g = GRAVIDADE[e.gravidade];
   $('cartao-heroi').style.setProperty('--cor-g', g ? `var(${g.cor})` : 'var(--c-oxigenio)');
   contar($('ier'), e.indiceEventos);
@@ -606,7 +607,7 @@ function mostrarNoite(noite) {
   $('baixar-pdf').disabled = false;
   estado.grupoNoite?.destruir();
   estado.grupoNoite = null;
-  if (estado.aba === 'noite') desenharNoite();
+  if (estado.aba === 'analise') desenharNoite();
 }
 
 function faixasDaNoite() {
@@ -618,8 +619,9 @@ function faixasDaNoite() {
   return faixas;
 }
 
+// O gráfico da noite fica na aba Análise; desenhado com a aba escondida, ele nasceria com largura zero.
 function desenharNoite() {
-  if (!estado.noite || estado.grupoNoite) return;
+  if (!estado.noite || estado.grupoNoite || estado.aba !== 'analise') return;
   const s = estado.series;
   const faixas = faixasDaNoite();
   const sinais = [SINAIS.spo2(s)];
@@ -932,6 +934,7 @@ function limparResumo(texto) {
   estado.grupoNoite?.destruir();
   estado.grupoNoite = null;
   $('periodo').textContent = '';
+  $('periodo-analise').textContent = '';
   $('ier').textContent = '—';
   $('selo-origem').hidden = true;
   $('cartao-heroi').style.removeProperty('--cor-g');
@@ -1243,6 +1246,9 @@ function situacaoAgora(d, s, fim, tAtual, demo) {
     }
   }
   if (spo2 < 90) return { estado: 'baixo', icone: 'alerta', cor: '--atencao', texto: 'Oxigênio baixo', detalhe: `${fmt(spo2)}%` };
+  // Sem sensor de respiração não dá para afirmar que a pessoa está respirando normalmente.
+  const semRespiracao = !d.respiracoes && ultimoValido(s.fr, fim, fim - 60) === null;
+  if (semRespiracao) return { estado: 'ok', icone: 'ok', cor: '--bom', texto: 'Oxigênio normal', detalhe: 'respiração ainda não medida' };
   return { estado: 'ok', icone: 'ok', cor: '--bom', texto: 'Respirando normalmente', detalhe: '' };
 }
 
@@ -1525,12 +1531,12 @@ function ajustarSeletor() {
 
 function trocarAba(aba) {
   estado.aba = aba;
-  for (const [nome, tela] of [['noite', 'tela-noite'], ['vivo', 'tela-vivo'], ['historico', 'tela-historico'], ['como', 'tela-como']]) {
+  for (const [nome, tela] of [['noite', 'tela-noite'], ['analise', 'tela-analise'], ['vivo', 'tela-vivo'], ['historico', 'tela-historico'], ['como', 'tela-como']]) {
     $(`aba-${nome}`).setAttribute('aria-selected', String(nome === aba));
     $(tela).hidden = nome !== aba;
   }
   ajustarSeletor();
-  if (aba === 'noite') {
+  if (aba === 'noite' || aba === 'analise') {
     tocar(false);
     pararVivoFirebase();
     desenharNoite();
@@ -1644,7 +1650,7 @@ function redesenharTudo() {
   estado.grupoNoite = null;
   estado.vivo.grupo?.destruir();
   estado.vivo.grupo = null;
-  if (estado.aba === 'noite') desenharNoite();
+  if (estado.aba === 'analise') desenharNoite();
   else desenharVivo();
   if (estado.noite) preencherTabelaEventos(estado.noite, estado.escore);
 }
@@ -1698,14 +1704,27 @@ async function iniciar() {
   });
 
   $('aba-noite').addEventListener('click', () => trocarAba('noite'));
+  $('aba-analise').addEventListener('click', () => trocarAba('analise'));
+  $('ir-analise').addEventListener('click', () => {
+    trocarAba('analise');
+    window.scrollTo({ top: 0 });
+  });
   $('aba-vivo').addEventListener('click', () => trocarAba('vivo'));
   $('aba-historico').addEventListener('click', () => trocarAba('historico'));
   $('aba-como').addEventListener('click', () => trocarAba('como'));
   $('botao-feira').addEventListener('click', () => feira.entrar({ telaCheia: true }));
   if (new URLSearchParams(location.search).has('feira')) feira.entrar();
   $('periodo-historico').addEventListener('change', carregarHistorico);
+  // Trocar o ID do dispositivo troca também a escuta ao vivo; senão a aba Agora seguiria mostrando o ID anterior.
   $('dispositivo').addEventListener('change', () => {
+    const dispositivo = $('dispositivo').value.trim();
+    if (dispositivo) guardar('dispositivo', dispositivo);
     if (estado.aba === 'historico') carregarHistorico();
+    if (estado.aba === 'vivo' && estado.fonte === 'firebase') {
+      pararVivoFirebase();
+      definirDadosVivo(null);
+      iniciarVivoFirebase();
+    }
   });
   $('fonte').addEventListener('change', (ev) => trocarFonte(ev.target.value));
   $('noite-demo').addEventListener('change', (ev) => carregarDemo(ev.target.value));

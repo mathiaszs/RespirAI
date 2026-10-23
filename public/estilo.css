@@ -475,6 +475,18 @@ select option { background: var(--solida); color: var(--texto); }
 .selo .detalhe { white-space: nowrap; font-weight: 500; color: var(--texto-2); font-size: 0.88rem; }
 .frase { font-size: 1.05rem; font-weight: 500; max-width: 54ch; line-height: 1.45; }
 .orientacao { color: var(--texto-2); margin-top: 6px; max-width: 60ch; font-size: 0.9rem; line-height: 1.45; }
+.link-analise {
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--c-oxigenio);
+  background: none;
+  border: 0;
+  padding: 2px 0;
+  cursor: pointer;
+}
+.link-analise:hover { text-decoration: underline; }
+.periodo-analise { font-size: 0.88rem; margin: -4px 0 12px; }
 .heroi-rodape {
   position: relative;
   display: flex;
@@ -1250,30 +1262,77 @@ body.feira .abas { pointer-events: none; }
 }
 
 @media (max-width: 760px) {
-  .topo { grid-template-columns: 1fr; grid-template-areas: "marca" "acoes" "abas"; }
-  .acoes-topo { width: 100%; justify-self: stretch; }
-  .acoes-topo .seletor-fonte { flex: 1; }
-  .acoes-topo select { width: 100%; }
-  .botao-feira span { display: none; }
-  .botao-feira { padding: 12px 15px; }
-  .abas { display: flex; width: 100%; border-radius: 18px; }
-  .aba { flex: 1 1 40%; justify-content: center; padding: 9px 10px; }
-  .seletor, .seletor .grupo { display: grid; grid-template-columns: 1fr; width: 100%; }
-  .seletor label { flex-direction: column; align-items: stretch; }
-  .heroi { padding: 18px; }
-  .heroi-corpo, .heroi-corpo:has(> .comparacao[hidden]) { grid-template-columns: 1fr; }
-  .heroi-texto { order: -1; }
-  .medidor { max-width: 280px; }
-  .cartoes { gap: 12px; }
-  .metrica { padding: 14px 16px; }
-  .metrica .valor { font-size: 1.8rem; }
-  .cartao { padding: 18px; }
-  .sinais-vivo { grid-template-columns: 1fr; }
-  .sinal { min-height: 0; padding-top: 16px; }
-  .sinal-valor { font-size: 52px; margin: 4px 0; }
-  .faisca { height: 44px; }
-  .estado-agora { font-size: 1.25rem; }
-  .estado-agora .contador { font-size: 1.5rem; }
+  /* topo: logo + dados + tema numa linha; abas numa faixa única que rola para o lado */
+  .topo { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "marca acoes" "abas abas"; gap: 10px 12px; padding-top: 12px; padding-bottom: 10px; }
+  .logo { width: 38px; height: 38px; border-radius: 12px; }
+  .marca { gap: 10px; }
+  h1 { font-size: 1.25rem; }
+  .acoes-topo { justify-self: end; gap: 6px; min-width: 0; }
+  .acoes-topo .seletor-fonte { min-width: 0; }
+  .acoes-topo select { max-width: 150px; font-size: 0.82rem; padding: 6px 8px; }
+  .botao-feira { display: none; }
+  .botao-icone { width: 36px; height: 36px; }
+  .abas { display: flex; flex-wrap: nowrap; width: 100%; overflow-x: auto; scrollbar-width: none; border-radius: 999px; }
+  .abas::-webkit-scrollbar { display: none; }
+  .aba { flex: none; padding: 7px 12px; font-size: 0.82rem; }
+  .seletor { margin-bottom: 10px; }
+  .seletor, .seletor .grupo { display: grid; grid-template-columns: 1fr; width: 100%; gap: 8px; }
+  .seletor label { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px; font-size: 0.78rem; }
+  .seletor select, .seletor input { width: 100%; font-size: 0.85rem; padding: 6px 10px; }
+
+  /* resultado: número com o medidor pequeno ao lado; comparação só com os números */
+  .heroi { padding: 14px 16px 12px; margin-bottom: 12px; }
+  .heroi-topo { flex-wrap: nowrap; align-items: center; gap: 8px; }
+  .heroi-topo > div:first-child { min-width: 0; }
+  .heroi-topo .sobretitulo { display: none; }
+  .heroi-topo .secundario { font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .heroi-acoes { flex-wrap: nowrap; flex: none; }
+  /* o período já diz se é noite de exemplo ou do dispositivo */
+  #selo-origem { display: none !important; }
+  #baixar-pdf { font-size: 0; gap: 0; padding: 7px 9px; }
+  .heroi-corpo, .heroi-corpo:has(> .comparacao[hidden]) {
+    grid-template-columns: minmax(0, 1fr) 128px;
+    grid-template-areas: "numero medidor" "selo selo" "frase frase" "orientacao orientacao" "comparacao comparacao";
+    gap: 6px 10px;
+    margin: 2px 0 8px;
+  }
+  .heroi-texto { display: contents; }
+  .valor-heroi { grid-area: numero; font-size: 60px; gap: 8px; }
+  .valor-heroi .unidade { font-size: 0.8rem; padding-bottom: 6px; }
+  .medidor { grid-area: medidor; max-width: 128px; align-self: center; }
+  .medidor .rotulo-arco, .medidor .limite { display: none; }
+  #gravidade { grid-area: selo; justify-self: start; flex-wrap: nowrap; white-space: nowrap; margin: 0; font-size: 0.85rem; padding: 4px 12px 4px 8px; }
+  #gravidade .detalhe { font-size: 0.78rem; }
+  .frase { grid-area: frase; font-size: 0.92rem; }
+  .orientacao { grid-area: orientacao; font-size: 0.8rem; margin-top: 0; }
+  .comparacao { grid-area: comparacao; padding: 10px 12px; gap: 6px; }
+  .comparacao-topo { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+  .comparacao-topo strong { display: none; }
+  .comparacao .concorda { font-size: 0.75rem; }
+  .comparacao-numeros { order: -1; }
+  .comparacao-numeros b { font-size: 1.3rem; }
+  .comparacao .regua { display: none; }
+  .heroi-rodape { padding-top: 8px; gap: 4px; }
+  .avisos li { font-size: 0.74rem; }
+  .aviso { font-size: 0.68rem; }
+
+  /* indicadores 2 × 2, só título e número */
+  .cartoes { gap: 10px; margin-bottom: 14px; }
+  .metrica { padding: 10px 12px; gap: 2px; }
+  .metrica .detalhe { display: none; }
+  .metrica-topo { gap: 8px; }
+  .metrica .titulo { font-size: 0.78rem; line-height: 1.25; }
+  .icone-redondo { width: 28px; height: 28px; border-radius: 9px; }
+  .metrica .valor { font-size: 1.6rem; }
+  .metrica .valor small { font-size: 0.72rem; }
+
+  .cartao { padding: 16px; }
+  .sinais-vivo { grid-template-columns: 1fr; gap: 10px; }
+  .sinal { min-height: 0; padding-top: 12px; }
+  .sinal-valor { font-size: 48px; margin: 2px 0; }
+  .faisca { height: 40px; }
+  .estado-agora { font-size: 1.15rem; padding: 10px 16px; }
+  .estado-agora .contador { font-size: 1.4rem; }
   .controles { border-radius: var(--raio); }
   .validacao-visual { grid-template-columns: 1fr; }
   .passos { grid-template-columns: 1fr; }
