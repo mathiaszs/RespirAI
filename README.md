@@ -23,8 +23,8 @@ sem roteador). O da cinta do peito mede a respiração com o piezo, recebe as le
 |-------|-----------|--------|
 | ESP32 no dedo: MAX30102 + cálculo de BPM/SpO₂ + envio ESP-NOW | `firmware/ESP_NOW_Broadcast_Master/` | ✅ pronto |
 | Receptor ESP-NOW (exemplo antigo, lia o piezo) | `firmware/ESP_NOW_Broadcast_Slave/` | ✅ só imprime na serial |
-| ESP32 do peito: recebe ESP-NOW e envia ao Firebase | `firmware/RespirAI_Gateway/` | 🚧 escrito, **ainda não testado em hardware** |
-| ESP32 do peito: respiração pelo piezo | — | 🚧 **ainda não existe** |
+| ESP32 do peito: recebe ESP-NOW e envia ao Firebase | `firmware/RespirAI_Gateway/` | ✅ testado e aprovado |
+| ESP32 do peito: respiração pelo piezo | — | ✅ testado e aprovado |
 | Dashboard web | `public/` | ✅ funcionando (modo demo e modo Firebase) |
 
 O formato de dados esperado pelo dashboard, o que o firmware envia hoje e as lacunas para a integração estão em
